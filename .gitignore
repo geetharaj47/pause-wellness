@@ -1,0 +1,43 @@
+# Environment variables
+.env
+.env.local
+
+# Databases
+*.db
+*.sqlite3
+
+# Python dependencies & cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# Node dependencies & build output
+node_modules/
+dist/
+build/
+.eslintcache
+.vite-cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
