@@ -340,11 +340,33 @@ This launches `pause_postgres` (pgvector/pgvector:pg16 on 5432), `pause_backend`
 
 ---
 
-## 5. Next Milestone
-- **Milestone 6: Final Review Package, Accessibility, Security Threat Model & Demo Documentation**:
-  - Comprehensive Security Threat Model in README (cross-tenant leakage, prompt injection, credential security, crisis false negatives, backup retention).
-  - Requirements-to-code traceability matrix mapping all specification requirements to exact files and test evidence.
-  - Reviewer demo script and live walkthrough guide.
-  - Final validation and cleanliness checks.
+### Milestone 6: Final Review Package & Traceability (Completed)
+- **Comprehensive Security Threat Model**:
+  - Fully documented in `README.md` section 4 covering cross-tenant data leakage, prompt injection / instruction override attacks, sensitive data at rest (AES-256 Fernet), deletion failures / vector purges, telemetry log leak prevention, and crisis detection limitations.
+- **Requirements-to-Code Traceability Matrix**:
+  - Fully documented in `README.md` section 5 mapping all 15 specification requirements to backend routes, frontend components, automated tests, and measured evaluation evidence.
+- **Reviewer Demo Walkthrough Script**:
+  - Fully documented in `README.md` section 6 providing an 9-step evaluation path from one-click demo login, check-in, planner, private journaling, emotion tag editing/deletion, grounded RAG history search, crisis intervention, to JSON export and permanent account deletion.
+- **Complete Measured Empirical Results**:
+  - Emotion Analysis: TF-IDF Macro-F1: `0.2500` vs RoBERTa Macro-F1: `0.4630`, p50: `41.01 ms` (`results_emotion.json`).
+  - Semantic Retrieval: Recall@5: `71.43%`, Precision@5: `71.43%`, No-Match Accuracy: `100.0%`, p50: `10.81 ms` (`results_retrieval.json`).
+  - RAG Grounding: Claim Citation Support Rate: `100.0%`, Unsupported Claims: `0`, Prompt Injection Refusal: `100.0%`, p50: `10.89 ms` (`results_rag.json`).
+  - Crisis Detection: Explicit Crisis Recall: `100.0%` (5/5), False Alarm Rate on Idioms/Negation: `0.0%` (0/11), p50: `0.049 ms` (`results_crisis.json`).
+
+---
+
+## 4. Final Build Status Summary
+
+| Milestone | Scope | Status | Evidence / Verification |
+|---|---|---|---|
+| **Milestone 1** | App Foundation, PostgreSQL 17, AES-256, Granular Consent, Check-ins, Planner, Catalog, Demo Seed | **COMPLETED** | Tests 1–7 passing; Next.js 14 App Router compiled |
+| **Milestone 2** | Emotion AI Analysis (TF-IDF vs RoBERTa), Confidence Bands, Correction & Deletion | **COMPLETED** | Tests 8–9 passing; `results_emotion.json` (F1: 0.4630) |
+| **Milestone 3** | MiniLM-L6-v2 Embeddings, Tenant SQL Isolation, Hybrid Ranking, Relevance Gate (0.38) | **COMPLETED** | Tests 10–12 passing; `results_retrieval.json` (Recall: 71.43%) |
+| **Milestone 4** | Grounded RAG Generation, Citation Contract Validation, Prompt Injection Refusal | **COMPLETED** | Tests 13–19 passing; `results_rag.json` (100% Citation Support) |
+| **Milestone 5** | Dedicated Crisis Detector Ensemble, India Helplines (14416/112), Scenario Matrix | **COMPLETED** | Tests 20–26 passing; `results_crisis.json` (100% Explicit Recall) |
+| **Milestone 6** | Threat Model, Traceability Matrix, Demo Script, Accessibility & Clean Documentation | **COMPLETED** | Full `README.md` & `BUILD_STATUS.md` finalized |
+
+**All 6 Milestones are fully implemented, verified with 27 passing tests (100% pass rate), 13 compiled Next.js routes, and 4 measured empirical benchmark results.**
+
 
 
