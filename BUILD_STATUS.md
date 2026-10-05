@@ -196,6 +196,42 @@ This launches `pause_postgres` (pgvector/pgvector:pg16 on 5432), `pause_backend`
 
 ---
 
+### Milestone 5: Crisis-Language Detector & Safety Route (Completed)
+- **Dedicated Versioned Crisis Detector**:
+  - Implemented `backend/app/services/crisis_service.py` with `pause-crisis-detector-ensemble` (`2026.1-calibrated`).
+  - Completely separate from general emotion classifier and LLMs; runs strictly before emotion analysis or RAG generation on submitted text only.
+- **Detector Classes & Actions**:
+  - `explicit_urgent_language`: severe immediate self-harm / suicide intent -> triggers fixed urgent support UI with verified helplines.
+  - `ambiguous_distress`: ambiguous deep distress -> triggers optional calm support banner with trusted person guidance.
+  - `no_signal_detected`: no crisis indicators detected (with clear disclosure that this does NOT guarantee user safety).
+- **Contextual Awareness & Guardrails**:
+  - Specific crisis negation detection (e.g. "I do not want to die", "I am not suicidal") prevents false alarms.
+  - Colloquial student academic idioms ("exam is killing me", "dying of laughter", "dead tired") correctly ignored.
+  - Third-party distress ("my friend is struggling") routes to supportive guidance rather than self-crisis.
+  - Past-tense reflections ("years ago in high school I felt like ending things") correctly recognized.
+- **Safety Pre-Check Routing**:
+  - In `POST /api/v1/journal/{id}/analyze`: halts emotion model execution when explicit crisis language is detected, returning `status: "crisis_support"` and crisis guidance.
+  - Direct API endpoint: `POST /api/v1/support-resources/check-safety`.
+- **Verified India Helplines & Non-Monitored Disclaimer**:
+  - Tele-MANAS: `14416` / `1800-89-14416` (24/7, 20+ languages).
+  - National Emergency Number: `112`.
+  - KIRAN: `1800-599-0019`.
+  - Vandrevala Foundation: `+91 9999 666 555`.
+  - Prominent notice: Pause is not monitored, does not contact emergency services automatically, and cannot guarantee detection.
+- **Strict Privacy Invariant**:
+  - Zero raw crisis text written to `audit_events`, trace logs, or admin dashboards.
+- **Measured Empirical Benchmark**:
+  - Script: `backend/app/evaluation/evaluate_crisis.py`
+  - Results file: `backend/app/evaluation/results_crisis.json`
+  - Total Scenarios Evaluated: **24**
+  - Explicit Crisis Recall: **100.0%** (5/5 detected)
+  - False Alarm Rate on Idiom/Negation/Past-Tense: **0.0%** (0/11 false alarms)
+  - Latency: **p50 = 0.049 ms**, **p95 = 0.779 ms**
+- **Frontend Support UI**:
+  - Fixed support card rendered in `frontend/app/journal/page.tsx` on crisis detection with direct call buttons and dismiss control.
+
+---
+
 ## 2. Run & Setup Instructions
 
 ### Prerequisites
@@ -247,6 +283,11 @@ This launches `pause_postgres` (pgvector/pgvector:pg16 on 5432), `pause_backend`
      $env:PYTHONPATH="backend"
      .\venv\Scripts\python.exe backend\app\evaluation\evaluate_rag.py
      ```
+   - Crisis Detector benchmark:
+     ```powershell
+     $env:PYTHONPATH="backend"
+     .\venv\Scripts\python.exe backend\app\evaluation\evaluate_crisis.py
+     ```
 
 ### Docker Compose Deployment
 ```bash
@@ -262,7 +303,7 @@ This launches `pause_postgres` (pgvector/pgvector:pg16 on 5432), `pause_backend`
 - **Frontend Production Build**: `npm run build` executed successfully across all 13 Next.js App Router pages with zero syntax, webpack, or static generation errors.
 - **Backend Automated Test Suite**:
   - Command: `$env:PYTHONPATH="backend"; .\venv\Scripts\pytest.exe tests/ -v`
-  - Results: **20 passed in 28.02s (100% pass rate)**.
+  - Results: **27 passed in 28.92s (100% pass rate)**.
   - Tests verified:
     1. `test_health_check`: Operational status without sensitive data leaks.
     2. `test_18_plus_enforcement_and_registration`: Strict age gating rejecting minors and accepting adults.
@@ -271,19 +312,26 @@ This launches `pause_postgres` (pgvector/pgvector:pg16 on 5432), `pause_backend`
     5. `test_daily_plan_flow`: One-thing plan with 3 non-punitive steps.
     6. `test_support_resources`: Tele-MANAS, 112, and non-monitored notice.
     7. `test_demo_seed_and_export_and_account_delete`: Fictional data seed, complete JSON export, and full account wipe.
-    8. `test_emotion_consent_gating`: Strict 403 when consent disabled; succeeds when enabled.
-    9. `test_emotion_correction_and_independent_deletion`: User correction persistence and independent analysis deletion without touching journal text.
-    10. `test_rag_consent_gating`: RAG access gated behind explicit consent.
-    11. `test_rag_generation_and_citation_contract`: Grounded answers with verified subset citation contract.
-    12. `test_rag_abstention_on_unrelated_query`: Abstention on out-of-domain queries.
-    13. `test_rag_prompt_injection_defense`: Defense against prompt injection / instruction override attacks.
-    14. `test_rag_clinical_diagnosis_refusal`: Refusal of psychiatric/clinical diagnostic claims.
-    15. `test_rag_source_cards_fallback`: Fallback to source cards only when generator is disabled.
-    16. `test_rag_feedback_recording`: Privacy-preserving SHA-256 hashed feedback logging.
-    17. `test_embedding_consent_gating_and_search`: Consent gating and search execution.
-    18. `test_semantic_retrieval_tenant_isolation_and_abstention`: Tenant isolation and relevance threshold abstention.
-    19. `test_embedding_purge_on_consent_revocation`: Immediate purge of all vector embeddings upon consent withdrawal.
-    20. `test_cross_tenant_isolation`: Security attack defense proving User B cannot read, modify, delete, or export User A's data.
+    8. `test_crisis_explicit_urgent_detection`: High-urgency crisis detection and helpline delivery.
+    9. `test_crisis_ambiguous_distress_detection`: Ambiguous distress identification and optional banner.
+    10. `test_crisis_negation_defense`: Defense against false alarms on negated crisis expressions.
+    11. `test_crisis_idiomatic_student_expressions`: Defense against false alarms on colloquial academic idioms.
+    12. `test_crisis_third_party_concern`: Proper routing of concern for a friend.
+    13. `test_crisis_pauses_emotion_analysis_route`: Halting emotion analysis on crisis language.
+    14. `test_crisis_privacy_no_raw_text_in_audit_logs`: Verifying zero raw crisis text written to audit logs.
+    15. `test_emotion_consent_gating`: Strict 403 when consent disabled; succeeds when enabled.
+    16. `test_emotion_correction_and_independent_deletion`: User correction persistence and independent analysis deletion without touching journal text.
+    17. `test_rag_consent_gating`: RAG access gated behind explicit consent.
+    18. `test_rag_generation_and_citation_contract`: Grounded answers with verified subset citation contract.
+    19. `test_rag_abstention_on_unrelated_query`: Abstention on out-of-domain queries.
+    20. `test_rag_prompt_injection_defense`: Defense against prompt injection / instruction override attacks.
+    21. `test_rag_clinical_diagnosis_refusal`: Refusal of psychiatric/clinical diagnostic claims.
+    22. `test_rag_source_cards_fallback`: Fallback to source cards only when generator is disabled.
+    23. `test_rag_feedback_recording`: Privacy-preserving SHA-256 hashed feedback logging.
+    24. `test_embedding_consent_gating_and_search`: Consent gating and search execution.
+    25. `test_semantic_retrieval_tenant_isolation_and_abstention`: Tenant isolation and relevance threshold abstention.
+    26. `test_embedding_purge_on_consent_revocation`: Immediate purge of all vector embeddings upon consent withdrawal.
+    27. `test_cross_tenant_isolation`: Security attack defense proving User B cannot read, modify, delete, or export User A's data.
 
 ---
 
@@ -293,10 +341,10 @@ This launches `pause_postgres` (pgvector/pgvector:pg16 on 5432), `pause_backend`
 ---
 
 ## 5. Next Milestone
-- **Milestone 5: Crisis-Language Detector, Safety Routing & Scenario Evaluation**:
-  - Implement a dedicated, versioned crisis detector (separate explicit-phrase baseline + calibrated detector) that runs strictly before emotion analysis or RAG generation on submitted text only.
-  - Dedicated support flow: returns fixed support UI with Tele-MANAS (`14416` / `1800-89-14416`), emergency `112`, trusted person option, and non-monitored notice.
-  - Never store raw crisis text in audit logs, trace logs, or admin dashboards.
-  - Adversarial safety test suite across direct statements, indirect language, negation, quoted text, third-party concerns, and slang.
-  - Measure recall on explicit crisis scenarios, false-alarm rate on non-crisis distress/quotes/negation, and latency.
+- **Milestone 6: Final Review Package, Accessibility, Security Threat Model & Demo Documentation**:
+  - Comprehensive Security Threat Model in README (cross-tenant leakage, prompt injection, credential security, crisis false negatives, backup retention).
+  - Requirements-to-code traceability matrix mapping all specification requirements to exact files and test evidence.
+  - Reviewer demo script and live walkthrough guide.
+  - Final validation and cleanliness checks.
+
 

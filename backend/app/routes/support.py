@@ -55,3 +55,17 @@ async def get_support_resources(
             for r in resources
         ]
     )
+
+from app.services.crisis_service import crisis_service, CrisisDetectionResult
+
+class SafetyCheckRequest(BaseModel):
+    text: str
+
+@router.post("/check-safety", response_model=CrisisDetectionResult)
+async def check_text_safety(req: SafetyCheckRequest):
+    """
+    Evaluate submitted text for immediate crisis or deep distress signals.
+    Strict privacy requirement: Never stores or logs the text in any database or audit log.
+    """
+    return crisis_service.evaluate_text(req.text)
+

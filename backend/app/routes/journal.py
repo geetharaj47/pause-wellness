@@ -237,6 +237,7 @@ async def delete_journal_entry(
 # ==========================================
 
 from app.services.emotion_service import emotion_service
+from app.services.crisis_service import crisis_service
 
 class EmotionCorrectionRequest(BaseModel):
     user_correction: Optional[str] = None
@@ -296,7 +297,27 @@ async def analyze_journal_entry(
 
     decrypted_text = decrypt_journal_text(entry.encrypted_text)
 
-    # 3. Execute analysis through EmotionAnalysisService
+    # 3. Dedicated safety check: run crisis detector before emotion model
+    crisis_res = crisis_service.evaluate_text(decrypted_text)
+    if crisis_res.detected_class == "explicit_urgent_language":
+        # Pause generation and return crisis support response
+        return EmotionAnalysisResponse(
+            id=uuid.uuid4(),
+            entry_id=entry.id,
+            status="crisis_support",
+            model_id=crisis_res.model_id,
+            model_version=crisis_res.model_version,
+            labels=[],
+            confidence_bands=[],
+            explanation_spans=[],
+            user_facing_explanation=crisis_res.user_message,
+            user_correction=None,
+            hidden=False,
+            abstained=True,
+            created_at=datetime.utcnow()
+        )
+
+    # 4. Execute analysis through EmotionAnalysisService
     analysis_res = emotion_service.analyze(decrypted_text, language=entry.language)
 
     now = datetime.utcnow()

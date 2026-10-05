@@ -1,0 +1,352 @@
+{
+  "evaluation_timestamp": "2026-10-05T10:32:22.557969+00:00",
+  "model_id": "pause-crisis-detector-ensemble",
+  "model_version": "2026.1-calibrated",
+  "total_scenarios_evaluated": 24,
+  "explicit_crisis_scenarios": 5,
+  "explicit_crisis_recall": 1.0,
+  "non_crisis_scenarios_evaluated": 11,
+  "false_alarm_rate_on_non_crisis": 0.0,
+  "p50_latency_ms": 0.049,
+  "p95_latency_ms": 0.779,
+  "scenarios": [
+    {
+      "id": "scenario-01",
+      "category": "explicit_urgent",
+      "expected_class": "explicit_urgent_language",
+      "detected_class": "explicit_urgent_language",
+      "support_action": "urgent_modal",
+      "matched_stems": [
+        "\\bkill(ing)?\\s+(my|one)?self\\b"
+      ],
+      "is_negated": false,
+      "is_third_party": false,
+      "is_past_tense": false,
+      "matches_expected": true,
+      "latency_ms": 1.981
+    },
+    {
+      "id": "scenario-02",
+      "category": "explicit_urgent",
+      "expected_class": "explicit_urgent_language",
+      "detected_class": "explicit_urgent_language",
+      "support_action": "urgent_modal",
+      "matched_stems": [
+        "\\bend(ing)?\\s+(my|one'?s)?\\s+life\\b"
+      ],
+      "is_negated": false,
+      "is_third_party": false,
+      "is_past_tense": false,
+      "matches_expected": true,
+      "latency_ms": 0.05
+    },
+    {
+      "id": "scenario-03",
+      "category": "explicit_urgent",
+      "expected_class": "explicit_urgent_language",
+      "detected_class": "explicit_urgent_language",
+      "support_action": "urgent_modal",
+      "matched_stems": [
+        "\\bsuicid(e|al)\\b",
+        "\\bcommit(ting)?\\s+suicide\\b"
+      ],
+      "is_negated": false,
+      "is_third_party": false,
+      "is_past_tense": false,
+      "matches_expected": true,
+      "latency_ms": 0.034
+    },
+    {
+      "id": "scenario-04",
+      "category": "explicit_urgent",
+      "expected_class": "explicit_urgent_language",
+      "detected_class": "explicit_urgent_language",
+      "support_action": "urgent_modal",
+      "matched_stems": [
+        "\\btak(e|ing)\\s+my\\s+(own\\s+)?life\\b"
+      ],
+      "is_negated": false,
+      "is_third_party": false,
+      "is_past_tense": false,
+      "matches_expected": true,
+      "latency_ms": 0.037
+    },
+    {
+      "id": "scenario-05",
+      "category": "explicit_urgent",
+      "expected_class": "explicit_urgent_language",
+      "detected_class": "explicit_urgent_language",
+      "support_action": "urgent_modal",
+      "matched_stems": [
+        "\\bjump(ing)?\\s+off(\\s+(a\\s+|the\\s+)?(bridge|building|roof|cliff|ledge))?\\b"
+      ],
+      "is_negated": false,
+      "is_third_party": false,
+      "is_past_tense": false,
+      "matches_expected": true,
+      "latency_ms": 0.039
+    },
+    {
+      "id": "scenario-06",
+      "category": "ambiguous_distress",
+      "expected_class": "ambiguous_distress",
+      "detected_class": "ambiguous_distress",
+      "support_action": "optional_banner",
+      "matched_stems": [
+        "\\bno\\s+reason\\s+to\\s+live\\b"
+      ],
+      "is_negated": false,
+      "is_third_party": false,
+      "is_past_tense": false,
+      "matches_expected": true,
+      "latency_ms": 0.779
+    },
+    {
+      "id": "scenario-07",
+      "category": "ambiguous_distress",
+      "expected_class": "ambiguous_distress",
+      "detected_class": "ambiguous_distress",
+      "support_action": "optional_banner",
+      "matched_stems": [
+        "\\bdon'?t\\s+want\\s+to\\s+wake\\s+up\\b"
+      ],
+      "is_negated": false,
+      "is_third_party": false,
+      "is_past_tense": false,
+      "matches_expected": true,
+      "latency_ms": 0.098
+    },
+    {
+      "id": "scenario-08",
+      "category": "ambiguous_distress",
+      "expected_class": "ambiguous_distress",
+      "detected_class": "no_signal_detected",
+      "support_action": "none",
+      "matched_stems": [],
+      "is_negated": false,
+      "is_third_party": false,
+      "is_past_tense": false,
+      "matches_expected": false,
+      "latency_ms": 0.058
+    },
+    {
+      "id": "scenario-09",
+      "category": "ambiguous_distress",
+      "expected_class": "ambiguous_distress",
+      "detected_class": "ambiguous_distress",
+      "support_action": "optional_banner",
+      "matched_stems": [
+        "\\bcan'?t\\s+go\\s+on\\s+(any\\s*more|with\\s+this)\\b"
+      ],
+      "is_negated": false,
+      "is_third_party": false,
+      "is_past_tense": false,
+      "matches_expected": true,
+      "latency_ms": 0.052
+    },
+    {
+      "id": "scenario-10",
+      "category": "ambiguous_distress",
+      "expected_class": "ambiguous_distress",
+      "detected_class": "ambiguous_distress",
+      "support_action": "optional_banner",
+      "matched_stems": [
+        "\\btired\\s+of\\s+(living|life|everything)\\b",
+        "\\bwant\\s+to\\s+disappear\\s+forever\\b"
+      ],
+      "is_negated": false,
+      "is_third_party": false,
+      "is_past_tense": false,
+      "matches_expected": true,
+      "latency_ms": 0.046
+    },
+    {
+      "id": "scenario-11",
+      "category": "negation",
+      "expected_class": "no_signal_detected",
+      "detected_class": "no_signal_detected",
+      "support_action": "none",
+      "matched_stems": [],
+      "is_negated": true,
+      "is_third_party": false,
+      "is_past_tense": false,
+      "matches_expected": true,
+      "latency_ms": 0.047
+    },
+    {
+      "id": "scenario-12",
+      "category": "negation",
+      "expected_class": "no_signal_detected",
+      "detected_class": "no_signal_detected",
+      "support_action": "none",
+      "matched_stems": [],
+      "is_negated": true,
+      "is_third_party": false,
+      "is_past_tense": false,
+      "matches_expected": true,
+      "latency_ms": 0.049
+    },
+    {
+      "id": "scenario-13",
+      "category": "negation",
+      "expected_class": "no_signal_detected",
+      "detected_class": "no_signal_detected",
+      "support_action": "none",
+      "matched_stems": [],
+      "is_negated": true,
+      "is_third_party": false,
+      "is_past_tense": false,
+      "matches_expected": true,
+      "latency_ms": 0.058
+    },
+    {
+      "id": "scenario-14",
+      "category": "past_tense",
+      "expected_class": "no_signal_detected",
+      "detected_class": "no_signal_detected",
+      "support_action": "none",
+      "matched_stems": [],
+      "is_negated": false,
+      "is_third_party": false,
+      "is_past_tense": true,
+      "matches_expected": true,
+      "latency_ms": 0.071
+    },
+    {
+      "id": "scenario-15",
+      "category": "past_tense",
+      "expected_class": "no_signal_detected",
+      "detected_class": "no_signal_detected",
+      "support_action": "none",
+      "matched_stems": [
+        "\\bsuicid(e|al)\\b"
+      ],
+      "is_negated": false,
+      "is_third_party": false,
+      "is_past_tense": true,
+      "matches_expected": true,
+      "latency_ms": 0.049
+    },
+    {
+      "id": "scenario-16",
+      "category": "quote_lyrics",
+      "expected_class": "ambiguous_distress",
+      "detected_class": "explicit_urgent_language",
+      "support_action": "urgent_modal",
+      "matched_stems": [
+        "\\bwant\\s+to\\s+die\\b"
+      ],
+      "is_negated": false,
+      "is_third_party": false,
+      "is_past_tense": false,
+      "matches_expected": false,
+      "latency_ms": 0.049
+    },
+    {
+      "id": "scenario-17",
+      "category": "third_party",
+      "expected_class": "ambiguous_distress",
+      "detected_class": "ambiguous_distress",
+      "support_action": "optional_banner",
+      "matched_stems": [
+        "third_party_concern"
+      ],
+      "is_negated": false,
+      "is_third_party": true,
+      "is_past_tense": false,
+      "matches_expected": true,
+      "latency_ms": 0.043
+    },
+    {
+      "id": "scenario-18",
+      "category": "third_party",
+      "expected_class": "ambiguous_distress",
+      "detected_class": "no_signal_detected",
+      "support_action": "none",
+      "matched_stems": [],
+      "is_negated": false,
+      "is_third_party": true,
+      "is_past_tense": false,
+      "matches_expected": false,
+      "latency_ms": 0.057
+    },
+    {
+      "id": "scenario-19",
+      "category": "idiom_stress",
+      "expected_class": "no_signal_detected",
+      "detected_class": "no_signal_detected",
+      "support_action": "none",
+      "matched_stems": [],
+      "is_negated": false,
+      "is_third_party": false,
+      "is_past_tense": false,
+      "matches_expected": true,
+      "latency_ms": 0.037
+    },
+    {
+      "id": "scenario-20",
+      "category": "idiom_stress",
+      "expected_class": "no_signal_detected",
+      "detected_class": "no_signal_detected",
+      "support_action": "none",
+      "matched_stems": [],
+      "is_negated": false,
+      "is_third_party": false,
+      "is_past_tense": false,
+      "matches_expected": true,
+      "latency_ms": 0.045
+    },
+    {
+      "id": "scenario-21",
+      "category": "idiom_stress",
+      "expected_class": "no_signal_detected",
+      "detected_class": "no_signal_detected",
+      "support_action": "none",
+      "matched_stems": [],
+      "is_negated": false,
+      "is_third_party": false,
+      "is_past_tense": false,
+      "matches_expected": true,
+      "latency_ms": 0.03
+    },
+    {
+      "id": "scenario-22",
+      "category": "idiom_stress",
+      "expected_class": "no_signal_detected",
+      "detected_class": "no_signal_detected",
+      "support_action": "none",
+      "matched_stems": [],
+      "is_negated": false,
+      "is_third_party": false,
+      "is_past_tense": false,
+      "matches_expected": true,
+      "latency_ms": 0.03
+    },
+    {
+      "id": "scenario-23",
+      "category": "non_english",
+      "expected_class": "no_signal_detected",
+      "detected_class": "no_signal_detected",
+      "support_action": "none",
+      "matched_stems": [],
+      "is_negated": false,
+      "is_third_party": false,
+      "is_past_tense": false,
+      "matches_expected": true,
+      "latency_ms": 0.049
+    },
+    {
+      "id": "scenario-24",
+      "category": "non_english",
+      "expected_class": "no_signal_detected",
+      "detected_class": "no_signal_detected",
+      "support_action": "none",
+      "matched_stems": [],
+      "is_negated": false,
+      "is_third_party": false,
+      "is_past_tense": false,
+      "matches_expected": true,
+      "latency_ms": 0.044
+    }
+  ]
+}

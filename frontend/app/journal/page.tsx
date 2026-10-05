@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { BookOpen, Shield, Trash2, Calendar, Sparkles, AlertCircle, Lock, Edit3, EyeOff, Check, X } from 'lucide-react';
+import { BookOpen, Shield, Trash2, Calendar, Sparkles, AlertCircle, Lock, Edit3, EyeOff, Check, X, ShieldAlert, ArrowRight } from 'lucide-react';
 import { fetchWithAuth, getStoredToken } from '../lib/api';
 
 export default function JournalPage() {
@@ -283,6 +283,52 @@ export default function JournalPage() {
                   {/* EMOTION ANALYSIS COMPONENT */}
                   <div className="pt-2 border-t border-paper-200">
                     {entry.emotion_analysis ? (
+                      entry.emotion_analysis.status === 'crisis_support' ? (
+                        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 space-y-3">
+                          <div className="flex items-start space-x-2.5">
+                            <ShieldAlert className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <h4 className="font-serif font-bold text-sm text-rose-950">
+                                Support is available right now
+                              </h4>
+                              <p className="text-xs text-rose-900 mt-1 leading-relaxed">
+                                {entry.emotion_analysis.user_facing_explanation}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 pt-1 pl-7">
+                            <a
+                              href="tel:14416"
+                              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white transition shadow-sm"
+                            >
+                              <span>Tele-MANAS (14416)</span>
+                            </a>
+                            <a
+                              href="tel:112"
+                              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-900 hover:bg-rose-950 text-white transition shadow-sm"
+                            >
+                              <span>Emergency (112)</span>
+                            </a>
+                            <Link
+                              href="/support"
+                              className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-rose-800 hover:bg-rose-100 transition"
+                            >
+                              <span>View verified directory</span>
+                              <ArrowRight className="w-3 h-3" />
+                            </Link>
+                          </div>
+                          <div className="flex items-center justify-between pt-2 border-t border-rose-200/60 pl-7 text-[10px] text-rose-700">
+                            <span>Pause is not monitored and does not automatically contact services.</span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteAnalysis(entry.id)}
+                              className="text-rose-600 hover:underline font-medium"
+                            >
+                              Dismiss notice
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
                       <div className="bg-paper-100 rounded-xl p-4 border border-paper-300 space-y-3">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-forest flex items-center space-x-1.5">
@@ -392,6 +438,7 @@ export default function JournalPage() {
                           <span>Evaluated for English text only</span>
                         </div>
                       </div>
+                      )
                     ) : (
                       <div className="flex items-center justify-between">
                         <button
