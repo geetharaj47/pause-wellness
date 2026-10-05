@@ -9,7 +9,7 @@ from sqlmodel import select, desc, delete
 
 from sqlalchemy.orm import selectinload
 from app.database import get_session
-from app.models import User, JournalEntry, EmotionAnalysis, EntryEmbedding, ConsentRecord
+from app.models import User, JournalEntry, EmotionAnalysis, EntryEmbedding, ConsentRecord, RagFeedback
 from app.auth import get_current_user
 from app.security import encrypt_journal_text, decrypt_journal_text
 
@@ -617,4 +617,202 @@ async def sync_embeddings(
 
     await session.commit()
     return {"status": "success", "synced_count": added_count}
+
+
+# ==========================================
+# RAG ANSWER GENERATION & CITATION VALIDATION
+# ==========================================
+
+from app.services.rag_service import rag_service
+
+class RAGAskRequest(BaseModel):
+    query: str = Field(..., min_length=1, description="Question about past reflections")
+    top_k: int = Field(default=5, ge=1, le=20)
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+
+class RAGAskResponse(BaseModel):
+    query: str
+    answer: Optional[str] = None
+    source_entry_ids: List[uuid.UUID]
+    sources: List[SearchResultItem]
+    abstained: bool
+    safety_route: str
+    message: str
+    provider: str
+
+class RAGFeedbackRequest(BaseModel):
+    query: str = Field(..., min_length=1)
+    feedback_type: str = Field(default="not_accurate")
+
+@router.post("/ask", response_model=RAGAskResponse)
+async def ask_my_history(
+    req: RAGAskRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    RAG personal-history generation with strict citation validation and safety guardrails:
+    1. Gated by embeddings_rag consent.
+    2. Untrusted data boundary: safety pre-check for crisis, prompt injection, and clinical claims.
+    3. Tenant isolation in SQL query before ranking.
+    4. Relevance threshold gate (0.38) with honest abstention.
+    5. Grounded synthesis citing only validated retrieved entry IDs.
+    """
+    # 1. Verify consent
+    consent_res = await session.execute(
+        select(ConsentRecord).where(
+            ConsentRecord.user_id == current_user.id,
+            ConsentRecord.purpose == "embeddings_rag"
+        )
+    )
+    consent = consent_res.scalars().first()
+    if not consent or not consent.granted:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Personal history search requires 'Personal history semantic search' consent. Please enable it in Privacy settings."
+        )
+
+    # 2. Safety pre-check (crisis, prompt injection, clinical claims)
+    safety_route, refusal_msg = rag_service.check_safety_and_adversarial(req.query)
+    if safety_route:
+        return RAGAskResponse(
+            query=req.query,
+            answer=None,
+            source_entry_ids=[],
+            sources=[],
+            abstained=True,
+            safety_route=safety_route,
+            message=refusal_msg or "Query flagged by safety check.",
+            provider="safety_guardrail"
+        )
+
+    # 3. Tenant-isolated query in database before ranking
+    stmt = (
+        select(EntryEmbedding, JournalEntry)
+        .join(JournalEntry, EntryEmbedding.entry_id == JournalEntry.id)
+        .where(
+            EntryEmbedding.user_id == current_user.id,
+            JournalEntry.user_id == current_user.id,
+            JournalEntry.deleted_at == None
+        )
+    )
+    if req.start_date:
+        stmt = stmt.where(JournalEntry.created_at >= req.start_date)
+    if req.end_date:
+        stmt = stmt.where(JournalEntry.created_at <= req.end_date)
+
+    rows = (await session.execute(stmt)).all()
+    if not rows:
+        return RAGAskResponse(
+            query=req.query,
+            answer=None,
+            source_entry_ids=[],
+            sources=[],
+            abstained=True,
+            safety_route="normal",
+            message="I couldn't find a related entry in your previous reflections.",
+            provider=rag_service.generator_mode
+        )
+
+    # 4. Hybrid ranking
+    q_vec = embedding_service.embed_text(req.query)
+    scored_items = []
+    for emb, entry in rows:
+        try:
+            stored_vector = json.loads(emb.embedding_json)
+        except Exception:
+            continue
+
+        decrypted_text = decrypt_journal_text(entry.encrypted_text)
+        cosine_sim = embedding_service.cosine_similarity(q_vec, stored_vector)
+        lexical_score = embedding_service.lexical_keyword_score(req.query, decrypted_text)
+        combined_score = (0.75 * cosine_sim) + (0.25 * lexical_score)
+
+        if combined_score >= RELEVANCE_THRESHOLD:
+            snippet = decrypted_text[:280] + ("..." if len(decrypted_text) > 280 else "")
+            date_fmt = entry.created_at.strftime("%b %d, %Y")
+            scored_items.append({
+                "entry_id": entry.id,
+                "created_at": entry.created_at,
+                "date_formatted": date_fmt,
+                "snippet": snippet,
+                "similarity_score": round(cosine_sim, 4),
+                "lexical_score": round(lexical_score, 4),
+                "combined_score": round(combined_score, 4)
+            })
+
+    scored_items.sort(key=lambda x: x["combined_score"], reverse=True)
+    top_items = scored_items[:req.top_k]
+
+    if not top_items:
+        return RAGAskResponse(
+            query=req.query,
+            answer=None,
+            source_entry_ids=[],
+            sources=[],
+            abstained=True,
+            safety_route="normal",
+            message="I couldn't find a related entry in your previous reflections.",
+            provider=rag_service.generator_mode
+        )
+
+    # 5. Generate grounded answer
+    rag_output = rag_service.generate_grounded_answer(req.query, top_items)
+
+    source_items = [
+        SearchResultItem(
+            entry_id=item["entry_id"],
+            created_at=item["created_at"],
+            date_formatted=item["date_formatted"],
+            snippet=item["snippet"],
+            similarity_score=item["similarity_score"],
+            lexical_score=item["lexical_score"],
+            combined_score=item["combined_score"]
+        )
+        for item in top_items
+    ]
+
+    # 6. Validate citation contract (strict subset of valid retrieved entry IDs)
+    valid_id_set = {item["entry_id"] for item in top_items}
+    validated_cited_uuids = []
+    for cid in rag_output["source_entry_ids"]:
+        try:
+            u = uuid.UUID(str(cid))
+            if u in valid_id_set:
+                validated_cited_uuids.append(u)
+        except Exception:
+            pass
+
+    return RAGAskResponse(
+        query=req.query,
+        answer=rag_output["answer"],
+        source_entry_ids=validated_cited_uuids,
+        sources=source_items,
+        abstained=rag_output["abstained"],
+        safety_route=rag_output["safety_route"],
+        message=rag_output["message"],
+        provider=rag_service.generator_mode
+    )
+
+@router.post("/ask/feedback")
+async def submit_rag_feedback(
+    req: RAGFeedbackRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    Record user feedback ('This doesn't sound right') without storing raw question text.
+    Uses SHA-256 query hash to guarantee sensitive journal query privacy.
+    """
+    q_hash = rag_service.hash_query_for_privacy(req.query)
+    feedback = RagFeedback(
+        user_id=current_user.id,
+        query_hash=q_hash,
+        feedback_type=req.feedback_type
+    )
+    session.add(feedback)
+    await session.commit()
+    return {"status": "success", "message": "Feedback recorded safely."}
+
 

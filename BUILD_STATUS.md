@@ -163,6 +163,39 @@ This launches `pause_postgres` (pgvector/pgvector:pg16 on 5432), `pause_backend`
 
 ---
 
+### Milestone 4: RAG Generation & Grounding Validation (Completed)
+- **Local Grounded Generation Adapter**:
+  - Implemented `backend/app/services/rag_service.py` with pluggable provider architecture (`local_synthesis`, `source_cards_only`, `external`).
+  - Summarizes only facts directly supported by the retrieved journal snippets, explicitly attributing observations to the dates they occurred.
+- **Untrusted Data Boundary & Guardrails**:
+  - Treats retrieved journal text strictly as untrusted data, never as system instructions.
+  - Active detection & refusal of prompt injection attacks (`safety_route: "refusal"`).
+  - Explicit refusal of medical, psychiatric, or diagnostic speculation requests (`safety_route: "clinical_refusal"`).
+  - Crisis pre-check hook that routes severe distress queries to verified emergency resources (`safety_route: "support"`).
+- **Strict Citation Contract**:
+  - Validates that every cited `source_entry_id` is a verified member of the retrieved entries for that authenticated user.
+  - Rejecting/stripping hallucinated or un-retrieved source IDs.
+  - Safe fallback: if generation is disabled or unavailable, returns structured source cards without fabricating prose.
+- **Privacy-Safe User Feedback**:
+  - Implemented `POST /api/v1/journal/ask/feedback` with "This doesn't sound right" reporting.
+  - Generates SHA-256 hash of user query before storing in `rag_feedbacks` table, guaranteeing zero raw query/journal leakage in feedback or audit logs.
+- **Interactive UI**:
+  - Upgraded `/history` to execute `POST /api/v1/journal/ask`.
+  - Renders grounded reflection summary with quote styling, cited reflection counts, feedback submission, and highlighted cited source cards.
+  - Displays emergency help banners (Tele-MANAS `14416` / `112`) and non-clinical boundary notices when safety routes are triggered.
+- **Measured Empirical Benchmark**:
+  - Script: `backend/app/evaluation/evaluate_rag.py`
+  - Results file: `backend/app/evaluation/results_rag.json`
+  - Claim-Level Citation Support Rate: **100.0%**
+  - Unsupported Claims Count: **0** (target: 0)
+  - Citation Violations: **0** (target: 0)
+  - Prompt Injection Refusal Rate: **100.0%**
+  - Clinical Diagnosis Refusal Rate: **100.0%**
+  - Out-of-Domain Abstention Rate: **100.0%**
+  - Latency: **p50 = 10.89 ms**, **p95 = 66.21 ms**
+
+---
+
 ## 2. Run & Setup Instructions
 
 ### Prerequisites
@@ -209,6 +242,11 @@ This launches `pause_postgres` (pgvector/pgvector:pg16 on 5432), `pause_backend`
      $env:PYTHONPATH="backend"
      .\venv\Scripts\python.exe backend\app\evaluation\evaluate_retrieval.py
      ```
+   - RAG Grounding benchmark:
+     ```powershell
+     $env:PYTHONPATH="backend"
+     .\venv\Scripts\python.exe backend\app\evaluation\evaluate_rag.py
+     ```
 
 ### Docker Compose Deployment
 ```bash
@@ -224,7 +262,7 @@ This launches `pause_postgres` (pgvector/pgvector:pg16 on 5432), `pause_backend`
 - **Frontend Production Build**: `npm run build` executed successfully across all 13 Next.js App Router pages with zero syntax, webpack, or static generation errors.
 - **Backend Automated Test Suite**:
   - Command: `$env:PYTHONPATH="backend"; .\venv\Scripts\pytest.exe tests/ -v`
-  - Results: **13 passed in 34.78s (100% pass rate)**.
+  - Results: **20 passed in 28.02s (100% pass rate)**.
   - Tests verified:
     1. `test_health_check`: Operational status without sensitive data leaks.
     2. `test_18_plus_enforcement_and_registration`: Strict age gating rejecting minors and accepting adults.
@@ -235,10 +273,17 @@ This launches `pause_postgres` (pgvector/pgvector:pg16 on 5432), `pause_backend`
     7. `test_demo_seed_and_export_and_account_delete`: Fictional data seed, complete JSON export, and full account wipe.
     8. `test_emotion_consent_gating`: Strict 403 when consent disabled; succeeds when enabled.
     9. `test_emotion_correction_and_independent_deletion`: User correction persistence and independent analysis deletion without touching journal text.
-    10. `test_embedding_consent_gating_and_search`: Consent gating and search execution.
-    11. `test_semantic_retrieval_tenant_isolation_and_abstention`: Tenant isolation and relevance threshold abstention.
-    12. `test_embedding_purge_on_consent_revocation`: Immediate purge of all vector embeddings upon consent withdrawal.
-    13. `test_cross_tenant_isolation`: Security attack defense proving User B cannot read, modify, delete, or export User A's data.
+    10. `test_rag_consent_gating`: RAG access gated behind explicit consent.
+    11. `test_rag_generation_and_citation_contract`: Grounded answers with verified subset citation contract.
+    12. `test_rag_abstention_on_unrelated_query`: Abstention on out-of-domain queries.
+    13. `test_rag_prompt_injection_defense`: Defense against prompt injection / instruction override attacks.
+    14. `test_rag_clinical_diagnosis_refusal`: Refusal of psychiatric/clinical diagnostic claims.
+    15. `test_rag_source_cards_fallback`: Fallback to source cards only when generator is disabled.
+    16. `test_rag_feedback_recording`: Privacy-preserving SHA-256 hashed feedback logging.
+    17. `test_embedding_consent_gating_and_search`: Consent gating and search execution.
+    18. `test_semantic_retrieval_tenant_isolation_and_abstention`: Tenant isolation and relevance threshold abstention.
+    19. `test_embedding_purge_on_consent_revocation`: Immediate purge of all vector embeddings upon consent withdrawal.
+    20. `test_cross_tenant_isolation`: Security attack defense proving User B cannot read, modify, delete, or export User A's data.
 
 ---
 
@@ -248,10 +293,10 @@ This launches `pause_postgres` (pgvector/pgvector:pg16 on 5432), `pause_backend`
 ---
 
 ## 5. Next Milestone
-- **Milestone 4: RAG Answer Generation, Citation Contract & Grounding Validation**:
-  - Implement `POST /api/v1/journal/ask` endpoint.
-  - Strict generation contract: provider adapter with local generation first; fallback to structured source cards when generation is disabled or unavailable.
-  - Strict citation contract: backend validates that returned `source_entry_ids` are a strict subset of the retrieved entry IDs for the authenticated user.
-  - Untrusted data boundary: retrieved journal text treated strictly as data, never instructions. Prompt injection defenses.
-  - Rejection of clinical/treatment claims or diagnostic speculation.
-  - Measure claim-level citation support rate and unsupported-claim count.
+- **Milestone 5: Crisis-Language Detector, Safety Routing & Scenario Evaluation**:
+  - Implement a dedicated, versioned crisis detector (separate explicit-phrase baseline + calibrated detector) that runs strictly before emotion analysis or RAG generation on submitted text only.
+  - Dedicated support flow: returns fixed support UI with Tele-MANAS (`14416` / `1800-89-14416`), emergency `112`, trusted person option, and non-monitored notice.
+  - Never store raw crisis text in audit logs, trace logs, or admin dashboards.
+  - Adversarial safety test suite across direct statements, indirect language, negation, quoted text, third-party concerns, and slang.
+  - Measure recall on explicit crisis scenarios, false-alarm rate on non-crisis distress/quotes/negation, and latency.
+

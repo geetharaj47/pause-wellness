@@ -242,3 +242,18 @@ class AuditEvent(SQLModel, table=True):
     timestamp: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     status: str = Field(default="SUCCESS", nullable=False)
     client_ip: Optional[str] = Field(default=None, nullable=True)
+
+
+class RagFeedback(SQLModel, table=True):
+    """
+    User feedback on RAG answers ("This doesn't sound right").
+    Stores privacy-compliant hash of query instead of raw prompt text.
+    """
+    __tablename__ = "rag_feedbacks"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    user_id: uuid.UUID = Field(foreign_key="users.id", index=True, nullable=False)
+    query_hash: str = Field(nullable=False, index=True) # SHA-256 hash of query (privacy safe)
+    feedback_type: str = Field(default="not_accurate", nullable=False) # "not_accurate", "unsupported", "helpful"
+    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+
