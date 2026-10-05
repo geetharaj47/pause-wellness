@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     PAUSE_JOURNAL_ENCRYPTION_KEY: str = "Q4sSoV0CV1htMwJdS_jTxPU-FnuKF-Pwso9V-47TvkU="
     ENABLE_EXTERNAL_MODEL_PROVIDER: bool = False
 
+    CORS_ORIGINS: str = "*"
+    ENABLE_DEMO_ACCOUNT: bool = True
+    PREFER_LIGHTWEIGHT_MODELS: bool = False
+
     model_config = SettingsConfigDict(
         env_file=(
             os.path.join(os.getcwd(), ".env"),

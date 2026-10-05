@@ -1,6 +1,9 @@
 // Frontend API Client for Pause AI Student Wellness Companion
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+const configuredUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+export const API_BASE = configuredUrl
+  ? configuredUrl.replace(/\/+$/, '')
+  : (typeof window === 'undefined' ? 'http://127.0.0.1:8000' : '');
 
 export function getStoredToken(): string | null {
   if (typeof window === 'undefined') return null;

@@ -22,5 +22,5 @@ COPY app/ ./app/
 # Expose backend port
 EXPOSE 8000
 
-# Start Uvicorn ASGI server
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Start Uvicorn ASGI server (dynamically bound to $PORT for cloud hosting or 8000 for local)
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

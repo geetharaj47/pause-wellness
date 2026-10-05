@@ -29,7 +29,7 @@ app = FastAPI(
 )
 
 # CORS configuration
-origins = [
+default_origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://localhost:3001",
@@ -38,13 +38,26 @@ origins = [
     "http://127.0.0.1:5173",
 ]
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+configured_origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+if "*" in configured_origins:
+    # Origin regex allows wildcard origins while supporting Authorization headers
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origin_regex=r"https?://.*",
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    all_origins = list(set(default_origins + configured_origins))
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=all_origins,
+        allow_origin_regex=r"https://.*\.onrender\.com",
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 # Mount all versioned API routes
 app.include_router(auth_router)
@@ -58,6 +71,7 @@ app.include_router(support_router)
 app.include_router(privacy_router)
 app.include_router(demo_router)
 
+@app.get("/health", status_code=status.HTTP_200_OK, tags=["System"])
 @app.get("/api/v1/health", status_code=status.HTTP_200_OK, tags=["System"])
 @app.get("/api/health", status_code=status.HTTP_200_OK, tags=["System"])
 async def health_check():

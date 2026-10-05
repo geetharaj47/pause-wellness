@@ -1,11 +1,12 @@
 import json
 import uuid
 from datetime import datetime, timedelta, date
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select, delete
 
+from app.config import settings
 from app.database import get_session
 from app.models import (
     User, ConsentRecord, CheckIn, JournalEntry,
@@ -25,11 +26,24 @@ class DemoSeedResponse(BaseModel):
     access_token: str
     user_id: uuid.UUID
 
+@router.get("/status")
+async def get_demo_status():
+    """Check whether demo account seeding is enabled on this instance."""
+    return {"enabled": settings.ENABLE_DEMO_ACCOUNT}
+
 @router.post("/seed", response_model=DemoSeedResponse, status_code=status.HTTP_200_OK)
 async def seed_demo_account(session: AsyncSession = Depends(get_session)):
     """
     Seed or reset the fictional reviewer demo account with clearly labeled synthetic data.
+    Disabled in production by default to protect shared tenant privacy.
     """
+    is_prod = settings.ENVIRONMENT.lower() in ("production", "prod")
+    if is_prod and not settings.ENABLE_DEMO_ACCOUNT:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Demo account seeding is disabled in production to protect shared tenant privacy and prevent state collisions. Please register your own private account via the Register page."
+        )
+
     now = datetime.utcnow()
 
     # Find or create demo user

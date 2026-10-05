@@ -50,7 +50,10 @@ export default function LoginPage() {
         setStoredToken(data.access_token);
         router.push('/');
       } else {
-        setErrorMessage('Failed to seed demo account.');
+        const err = await res.json().catch(() => ({}));
+        setErrorMessage(
+          err.detail || 'Demo account is disabled on this instance to protect tenant privacy. Please use "Create an account" below.'
+        );
       }
     } catch {
       setErrorMessage('Could not connect to the backend server.');
@@ -89,6 +92,9 @@ export default function LoginPage() {
         >
           {isDemoLoading ? 'Seeding Fictional Demo...' : 'One-Click Reviewer Demo Sign In'}
         </button>
+        <p className="text-[11px] text-forest-muted">
+          Note: In production, demo seeding is restricted to prevent shared data overwrites. Create a private account below for full isolated testing.
+        </p>
       </div>
 
       {/* Standard Login Form */}

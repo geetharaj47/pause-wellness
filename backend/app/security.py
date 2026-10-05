@@ -1,18 +1,23 @@
-import os
+import base64
 import hashlib
+import os
 from datetime import datetime, timedelta
 from typing import Optional
 from cryptography.fernet import Fernet
 from jose import JWTError, jwt
 from app.config import settings
 
-# Initialize Fernet cipher for application-level envelope encryption of journal text
-_fernet_key = settings.PAUSE_JOURNAL_ENCRYPTION_KEY.encode()
-try:
-    _cipher_suite = Fernet(_fernet_key)
-except Exception:
-    # Fallback to deterministic key if corrupted in dev
-    _cipher_suite = Fernet(Fernet.generate_key())
+def _build_cipher() -> Fernet:
+    raw = (settings.PAUSE_JOURNAL_ENCRYPTION_KEY or "").strip()
+    if not raw:
+        return Fernet(Fernet.generate_key())
+    try:
+        return Fernet(raw.encode("utf-8"))
+    except Exception:
+        derived = base64.urlsafe_b64encode(hashlib.sha256(raw.encode("utf-8")).digest())
+        return Fernet(derived)
+
+_cipher_suite = _build_cipher()
 
 def encrypt_journal_text(plain_text: str) -> str:
     """Encrypt sensitive journal content before writing to database."""

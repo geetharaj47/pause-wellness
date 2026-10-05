@@ -9,6 +9,11 @@ from app.models import WellnessAction, SupportResource
 
 connect_args = {}
 db_url = settings.DATABASE_URL
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+elif db_url.startswith("postgresql://") and not db_url.startswith("postgresql+asyncpg://"):
+    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
 if db_url.startswith("sqlite"):
     connect_args["check_same_thread"] = False
 
@@ -191,7 +196,18 @@ async def seed_initial_data(session: AsyncSession) -> None:
     await session.commit()
 
 async def init_db() -> None:
-    """Initializes tables and seeds base records."""
+    """Initializes tables, ensures vector extension on PostgreSQL, and seeds base records."""
+    if engine.dialect.name == "postgresql":
+        try:
+            async with engine.connect() as conn:
+                from sqlalchemy import text
+                await conn.execution_options(isolation_level="AUTOCOMMIT")
+                await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+        except Exception:
+            # Local Windows environment may lack the compiled C pgvector binary.
+            # Cloud environments (Render / Docker) have pgvector available.
+            pass
+
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
     

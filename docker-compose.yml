@@ -27,13 +27,14 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - ENVIRONMENT=production
+      - ENVIRONMENT=${ENVIRONMENT:-production}
       - PORT=8000
       - HOST=0.0.0.0
-      - DATABASE_URL=postgresql+asyncpg://pause_app:pause_secure_local_dev@db:5432/pause_wellness
-      - JWT_SECRET_KEY=pause_wellness_secret_jwt_key_2026_capstone_secure_local
-      - PAUSE_JOURNAL_ENCRYPTION_KEY=Q4sSoV0CV1htMwJdS_jTxPU-FnuKF-Pwso9V-47TvkU=
+      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://pause_app:pause_secure_local_dev@db:5432/pause_wellness}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - PAUSE_JOURNAL_ENCRYPTION_KEY=${PAUSE_JOURNAL_ENCRYPTION_KEY}
       - ENABLE_EXTERNAL_MODEL_PROVIDER=false
+      - ENABLE_DEMO_ACCOUNT=${ENABLE_DEMO_ACCOUNT:-false}
     depends_on:
       db:
         condition: service_healthy
@@ -47,7 +48,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://backend:8000
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://backend:8000}
     depends_on:
       - backend
     restart: unless-stopped
