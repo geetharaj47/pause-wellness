@@ -2,9 +2,10 @@
 .env
 .env.local
 
-# Databases
+# Databases & local clusters
 *.db
 *.sqlite3
+.pgdata/
 
 # Python dependencies & cache
 __pycache__/
@@ -26,6 +27,7 @@ htmlcov/
 node_modules/
 dist/
 build/
+.next/
 .eslintcache
 .vite-cache/
 

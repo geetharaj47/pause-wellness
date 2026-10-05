@@ -1,24 +1,17 @@
-# Stage 1: Build compilation environment
-FROM node:20-alpine AS build
-WORKDIR /frontend
+# Production Next.js Dockerfile
+FROM node:20-alpine AS runner
+WORKDIR /app
 
-# Copy dependency configuration
-COPY package.json ./
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
 
-# Install npm packages
+COPY package*.json ./
 RUN npm install
 
-# Copy source repository
 COPY . .
-
-# Compile static distribution bundle
 RUN npm run build
 
-# Stage 2: Serve compiled code via Nginx
-FROM nginx:alpine
-COPY --from=build /frontend/dist /usr/share/nginx/html
+EXPOSE 3000
 
-# Expose default HTTP port
-EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["npm", "start"]

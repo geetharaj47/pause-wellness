@@ -1,27 +1,56 @@
 version: '3.8'
 
 services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: pause_postgres
+    environment:
+      POSTGRES_USER: pause_app
+      POSTGRES_PASSWORD: pause_secure_local_dev
+      POSTGRES_DB: pause_wellness
+    ports:
+      - "5432:5432"
+    volumes:
+      - pause_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pause_app -d pause_wellness"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: mindtrace_backend
+    container_name: pause_backend
     ports:
       - "8000:8000"
-    env_file:
-      - .env
-    volumes:
-      # Persist SQLite databases and allow hot reloading during development
-      - ./backend:/backend
-    restart: always
+    environment:
+      - ENVIRONMENT=production
+      - PORT=8000
+      - HOST=0.0.0.0
+      - DATABASE_URL=postgresql+asyncpg://pause_app:pause_secure_local_dev@db:5432/pause_wellness
+      - JWT_SECRET_KEY=pause_wellness_secret_jwt_key_2026_capstone_secure_local
+      - PAUSE_JOURNAL_ENCRYPTION_KEY=Q4sSoV0CV1htMwJdS_jTxPU-FnuKF-Pwso9V-47TvkU=
+      - ENABLE_EXTERNAL_MODEL_PROVIDER=false
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: mindtrace_frontend
+    container_name: pause_frontend
     ports:
-      - "3000:80"
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8000
     depends_on:
       - backend
-    restart: always
+    restart: unless-stopped
+
+volumes:
+  pause_pgdata:
