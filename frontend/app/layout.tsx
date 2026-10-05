@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ShieldAlert, BookOpen, CheckSquare, Sparkles, TrendingUp, Compass, Lock, LogOut, User as UserIcon } from 'lucide-react';
+import { ShieldAlert, BookOpen, CheckSquare, Sparkles, TrendingUp, Compass, Lock, LogOut, User as UserIcon, Search } from 'lucide-react';
 import './globals.css';
 import { getStoredToken, setStoredToken, fetchWithAuth } from './lib/api';
 
@@ -55,6 +55,7 @@ export default function RootLayout({
     { label: 'Today', href: '/', icon: Sparkles },
     { label: 'My plan', href: '/plan', icon: CheckSquare },
     { label: 'Journal', href: '/journal', icon: BookOpen },
+    { label: 'Ask history', href: '/history', icon: Search },
     { label: 'Reflections', href: '/reflections', icon: TrendingUp },
     { label: 'Activities', href: '/actions', icon: Compass },
     { label: 'Get support', href: '/support', icon: ShieldAlert },

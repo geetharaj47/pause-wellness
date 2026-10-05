@@ -133,6 +133,28 @@ async def create_journal_entry(
         deleted_at=None
     )
     session.add(entry)
+    await session.flush()
+
+    # Generate embedding if embeddings_rag consent is enabled
+    rag_consent_res = await session.execute(
+        select(ConsentRecord).where(
+            ConsentRecord.user_id == current_user.id,
+            ConsentRecord.purpose == "embeddings_rag"
+        )
+    )
+    rag_consent = rag_consent_res.scalars().first()
+    if rag_consent and rag_consent.granted:
+        from app.services.embedding_service import embedding_service
+        vector = embedding_service.embed_text(req.text)
+        session.add(EntryEmbedding(
+            entry_id=entry.id,
+            user_id=current_user.id,
+            embedding_json=json.dumps(vector),
+            model_id=embedding_service.model_id,
+            model_version=embedding_service.model_version,
+            created_at=now
+        ))
+
     await session.commit()
     await session.refresh(entry)
     return _format_entry(entry, analysis_override=None)
@@ -412,3 +434,187 @@ async def delete_emotion_analysis(
     await session.delete(analysis)
     await session.commit()
     return None
+
+# ==========================================
+# HYBRID SEMANTIC SEARCH (ASK MY HISTORY)
+# ==========================================
+
+from app.services.embedding_service import embedding_service, RELEVANCE_THRESHOLD
+
+class SearchRequest(BaseModel):
+    query: str = Field(..., min_length=1, description="Question or search query about previous reflections")
+    top_k: int = Field(default=5, ge=1, le=20)
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+
+class SearchResultItem(BaseModel):
+    entry_id: uuid.UUID
+    created_at: datetime
+    date_formatted: str
+    snippet: str
+    similarity_score: float
+    lexical_score: float
+    combined_score: float
+
+class SearchResponse(BaseModel):
+    query: str
+    total_retrieved: int
+    relevance_threshold: float
+    abstained: bool
+    message: str
+    results: List[SearchResultItem]
+
+@router.post("/search", response_model=SearchResponse)
+async def search_journal_entries(
+    req: SearchRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    Search only entries belonging to the authenticated user.
+    Gated by embeddings_rag consent.
+    Tenant filter is strictly applied in the database query BEFORE ranking/top-k.
+    """
+    # 1. Verify embeddings_rag consent
+    consent_res = await session.execute(
+        select(ConsentRecord).where(
+            ConsentRecord.user_id == current_user.id,
+            ConsentRecord.purpose == "embeddings_rag"
+        )
+    )
+    consent = consent_res.scalars().first()
+    if not consent or not consent.granted:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Personal history search requires 'Personal history semantic search' consent. Please enable it in Privacy settings."
+        )
+
+    # 2. Query only authenticated user's embeddings in the database query before vector ranking
+    stmt = (
+        select(EntryEmbedding, JournalEntry)
+        .join(JournalEntry, EntryEmbedding.entry_id == JournalEntry.id)
+        .where(
+            EntryEmbedding.user_id == current_user.id,
+            JournalEntry.user_id == current_user.id,
+            JournalEntry.deleted_at == None
+        )
+    )
+    if req.start_date:
+        stmt = stmt.where(JournalEntry.created_at >= req.start_date)
+    if req.end_date:
+        stmt = stmt.where(JournalEntry.created_at <= req.end_date)
+
+    rows = (await session.execute(stmt)).all()
+    if not rows:
+        return SearchResponse(
+            query=req.query,
+            total_retrieved=0,
+            relevance_threshold=RELEVANCE_THRESHOLD,
+            abstained=True,
+            message="I couldn't find a related entry in your previous reflections.",
+            results=[]
+        )
+
+    # 3. Compute query embedding
+    q_vec = embedding_service.embed_text(req.query)
+
+    # 4. Rank items with hybrid scoring
+    scored_items = []
+    for emb, entry in rows:
+        try:
+            stored_vector = json.loads(emb.embedding_json)
+        except Exception:
+            continue
+
+        decrypted_text = decrypt_journal_text(entry.encrypted_text)
+        cosine_sim = embedding_service.cosine_similarity(q_vec, stored_vector)
+        lexical_score = embedding_service.lexical_keyword_score(req.query, decrypted_text)
+        combined_score = (0.75 * cosine_sim) + (0.25 * lexical_score)
+
+        # Relevance gate
+        if combined_score >= RELEVANCE_THRESHOLD:
+            snippet = decrypted_text[:220] + ("..." if len(decrypted_text) > 220 else "")
+            date_fmt = entry.created_at.strftime("%b %d, %Y")
+            scored_items.append(SearchResultItem(
+                entry_id=entry.id,
+                created_at=entry.created_at,
+                date_formatted=date_fmt,
+                snippet=snippet,
+                similarity_score=round(cosine_sim, 4),
+                lexical_score=round(lexical_score, 4),
+                combined_score=round(combined_score, 4)
+            ))
+
+    scored_items.sort(key=lambda x: x.combined_score, reverse=True)
+    top_results = scored_items[:req.top_k]
+
+    if not top_results:
+        return SearchResponse(
+            query=req.query,
+            total_retrieved=0,
+            relevance_threshold=RELEVANCE_THRESHOLD,
+            abstained=True,
+            message="I couldn't find a related entry in your previous reflections.",
+            results=[]
+        )
+
+    return SearchResponse(
+        query=req.query,
+        total_retrieved=len(top_results),
+        relevance_threshold=RELEVANCE_THRESHOLD,
+        abstained=False,
+        message=f"Found {len(top_results)} relevant reflection{'s' if len(top_results) > 1 else ''}.",
+        results=top_results
+    )
+
+@router.post("/sync-embeddings")
+async def sync_embeddings(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    Ensure all existing non-deleted journal entries for the current user
+    have vector embeddings if embeddings_rag consent is enabled.
+    """
+    consent_res = await session.execute(
+        select(ConsentRecord).where(
+            ConsentRecord.user_id == current_user.id,
+            ConsentRecord.purpose == "embeddings_rag"
+        )
+    )
+    consent = consent_res.scalars().first()
+    if not consent or not consent.granted:
+        return {"status": "skipped", "message": "Embeddings consent is not active."}
+
+    existing_embs_res = await session.execute(
+        select(EntryEmbedding.entry_id).where(EntryEmbedding.user_id == current_user.id)
+    )
+    embedded_ids = set(existing_embs_res.scalars().all())
+
+    all_entries_res = await session.execute(
+        select(JournalEntry).where(
+            JournalEntry.user_id == current_user.id,
+            JournalEntry.deleted_at == None
+        )
+    )
+    entries = all_entries_res.scalars().all()
+
+    now = datetime.utcnow()
+    added_count = 0
+    for e in entries:
+        if e.id not in embedded_ids:
+            text = decrypt_journal_text(e.encrypted_text)
+            vector = embedding_service.embed_text(text)
+            session.add(EntryEmbedding(
+                entry_id=e.id,
+                user_id=current_user.id,
+                embedding_json=json.dumps(vector),
+                model_id=embedding_service.model_id,
+                model_version=embedding_service.model_version,
+                created_at=now
+            ))
+            added_count += 1
+
+    await session.commit()
+    return {"status": "success", "synced_count": added_count}
+

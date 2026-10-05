@@ -1,0 +1,117 @@
+{
+  "evaluation_timestamp": "2026-10-05T10:13:03.688922",
+  "model_id": "sentence-transformers/all-MiniLM-L6-v2",
+  "model_version": "8b3219a92973c328a8e22fadcfa821b5dc75636a",
+  "relevance_threshold": 0.38,
+  "corpus_size": 10,
+  "total_queries": 10,
+  "positive_queries": 7,
+  "negative_queries": 3,
+  "recall_at_5": 0.7143,
+  "precision_at_5": 0.7143,
+  "no_match_accuracy": 1.0,
+  "p50_latency_ms": 10.81,
+  "p95_latency_ms": 12.47,
+  "query_details": [
+    {
+      "query": "What helped when I had exam anxiety or nervousness?",
+      "expected_ids": [
+        "entry-08",
+        "entry-06",
+        "entry-01"
+      ],
+      "retrieved_ids": [],
+      "status": "FALSE_ABSTAIN",
+      "latency_ms": 11.35
+    },
+    {
+      "query": "What did I do when my coding project was overwhelming?",
+      "expected_ids": [
+        "entry-02"
+      ],
+      "retrieved_ids": [
+        "entry-02"
+      ],
+      "status": "RETRIEVED",
+      "latency_ms": 11.98
+    },
+    {
+      "query": "What bedtime routine or habits helped me fall asleep?",
+      "expected_ids": [
+        "entry-03",
+        "entry-07"
+      ],
+      "retrieved_ids": [
+        "entry-03",
+        "entry-07"
+      ],
+      "status": "RETRIEVED",
+      "latency_ms": 9.88
+    },
+    {
+      "query": "What helped when I felt isolated or wanted to reconnect with someone?",
+      "expected_ids": [
+        "entry-09",
+        "entry-04"
+      ],
+      "retrieved_ids": [],
+      "status": "FALSE_ABSTAIN",
+      "latency_ms": 12.6
+    },
+    {
+      "query": "How did I handle screen fatigue after hours of lab work?",
+      "expected_ids": [
+        "entry-05"
+      ],
+      "retrieved_ids": [
+        "entry-05"
+      ],
+      "status": "RETRIEVED",
+      "latency_ms": 12.32
+    },
+    {
+      "query": "Did studying with a peer help with revision?",
+      "expected_ids": [
+        "entry-06"
+      ],
+      "retrieved_ids": [
+        "entry-06"
+      ],
+      "status": "RETRIEVED",
+      "latency_ms": 11.24
+    },
+    {
+      "query": "What physical activity lifted my energy or mood?",
+      "expected_ids": [
+        "entry-09",
+        "entry-05"
+      ],
+      "retrieved_ids": [
+        "entry-09"
+      ],
+      "status": "RETRIEVED",
+      "latency_ms": 10.36
+    },
+    {
+      "query": "Cryptocurrency Bitcoin blockchain wallet trading strategy",
+      "expected_ids": [],
+      "retrieved_ids": [],
+      "status": "CORRECT_ABSTAIN",
+      "latency_ms": 10.38
+    },
+    {
+      "query": "Car engine repair and transmission replacement manual",
+      "expected_ids": [],
+      "retrieved_ids": [],
+      "status": "CORRECT_ABSTAIN",
+      "latency_ms": 7.72
+    },
+    {
+      "query": "Quantum gravity and general relativity mathematical proofs",
+      "expected_ids": [],
+      "retrieved_ids": [],
+      "status": "CORRECT_ABSTAIN",
+      "latency_ms": 10.11
+    }
+  ]
+}

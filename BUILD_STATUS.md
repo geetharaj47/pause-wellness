@@ -131,11 +131,127 @@ This launches `pause_postgres` (pgvector/pgvector:pg16 on 5432), `pause_backend`
 
 ---
 
+### Milestone 3: Embeddings & Tenant-Scoped Semantic Retrieval (Completed)
+- **Local Embedding Pipeline**:
+  - Integrated `sentence-transformers/all-MiniLM-L6-v2` pinned to revision `8b3219a92973c328a8e22fadcfa821b5dc75636a` (384-dimensional dense vectors, ~80MB, runs fast on CPU).
+  - Implemented text chunking (<150 words per chunk), cosine similarity, and lexical scoring.
+- **Strict Tenant Isolation**:
+  - In `POST /api/v1/journal/search`, the SQL query explicitly filters `EntryEmbedding.user_id == current_user.id` and `JournalEntry.user_id == current_user.id` **before** vector ranking/top-k selection.
+  - Verified with attack test cases proving zero cross-account data or vector leakage.
+- **Hybrid Scoring & Relevance Gate**:
+  - Hybrid scoring formula: `combined_score = 0.75 * cosine + 0.25 * lexical`.
+  - Hard relevance threshold gate: `0.38`. When no entry achieves `0.38`, returns honest abstention: `"I couldn't find a related entry in your previous reflections."`
+- **Consent Lifecycle & Vector Purge**:
+  - Gated strictly by `embeddings_rag` consent toggle. Returns 403 Forbidden if consent is missing.
+  - Updating or deleting an entry immediately invalidates/deletes its vector.
+  - Revoking `embeddings_rag` consent instantly purges all vector embeddings for that user from the database.
+  - Implemented `POST /api/v1/journal/sync-embeddings` for on-demand batch embedding sync.
+- **Measured Empirical Benchmark**:
+  - Script: `backend/app/evaluation/evaluate_retrieval.py`
+  - Results file: `backend/app/evaluation/results_retrieval.json`
+  - Recall@5 (Positive Queries): **71.43%**
+  - Precision@5 (Mean): **71.43%**
+  - No-Match Accuracy (Negative Queries): **100.0%** (zero false-positives on out-of-domain queries)
+  - Relevance Gate Threshold: **0.38**
+  - Latency: **p50 = 10.81 ms**, **p95 = 12.47 ms**
+- **Frontend "Ask My History" (`/history`)**:
+  - Interactive search bar with suggested quick queries.
+  - Relevance percentage badges and vector/lexical match breakdown.
+  - Abstention display explaining the confidence threshold.
+  - Consent warning linking directly to `/privacy`.
+  - Added "Ask history" with `Search` icon to the persistent navigation bar.
+
+---
+
+## 2. Run & Setup Instructions
+
+### Prerequisites
+- Python 3.12+
+- Node.js 20+ (Node 24 supported)
+- PostgreSQL 17 or Docker
+
+### Local Running (Native Host)
+
+1. **Database**:
+   The local PostgreSQL 17 cluster is installed at `c:\finalyearPro\.pgdata` on port `5434`.
+   To start it manually if stopped:
+   ```powershell
+   & "C:\Program Files\PostgreSQL\17\bin\pg_ctl.exe" -D "c:\finalyearPro\.pgdata" -o "-p 5434" -l "c:\finalyearPro\.pgdata\server.log" start
+   ```
+
+2. **Backend API**:
+   From the repository root:
+   ```powershell
+   $env:PYTHONPATH="backend"
+   .\venv\Scripts\uvicorn.exe app.main:app --host 127.0.0.1 --port 8000 --reload
+   ```
+   OpenAPI documentation available at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
+
+3. **Frontend Application**:
+   From the `frontend` directory:
+   ```powershell
+   cd frontend
+   npm run dev
+   ```
+   Open the application in your browser at [http://localhost:3000](http://localhost:3000).
+
+4. **Reviewer Demo Mode**:
+   Click **"One-Click Reviewer Demo Sign In"** on the login screen to automatically seed and log in with safe fictional reflection data.
+
+5. **Run Evaluation Benchmarks**:
+   - Emotion benchmark:
+     ```powershell
+     $env:PYTHONPATH="backend"
+     .\venv\Scripts\python.exe backend\app\evaluation\evaluate_emotion.py
+     ```
+   - Retrieval benchmark:
+     ```powershell
+     $env:PYTHONPATH="backend"
+     .\venv\Scripts\python.exe backend\app\evaluation\evaluate_retrieval.py
+     ```
+
+### Docker Compose Deployment
+```bash
+docker compose up --build
+```
+This launches `pause_postgres` (pgvector/pgvector:pg16 on 5432), `pause_backend` (port 8000), and `pause_frontend` (port 3000).
+
+---
+
+## 3. Checks Performed
+
+- **Database Connection**: `asyncpg` connection verified to `postgresql+asyncpg://postgres@localhost:5434/pause_wellness`.
+- **Frontend Production Build**: `npm run build` executed successfully across all 13 Next.js App Router pages with zero syntax, webpack, or static generation errors.
+- **Backend Automated Test Suite**:
+  - Command: `$env:PYTHONPATH="backend"; .\venv\Scripts\pytest.exe tests/ -v`
+  - Results: **13 passed in 34.78s (100% pass rate)**.
+  - Tests verified:
+    1. `test_health_check`: Operational status without sensitive data leaks.
+    2. `test_18_plus_enforcement_and_registration`: Strict age gating rejecting minors and accepting adults.
+    3. `test_checkin_flow`: Plain language mood, energy, and context tags.
+    4. `test_journal_encryption_and_deletion`: AES-256 Fernet encryption at rest, owner decryption, and cascading deletion.
+    5. `test_daily_plan_flow`: One-thing plan with 3 non-punitive steps.
+    6. `test_support_resources`: Tele-MANAS, 112, and non-monitored notice.
+    7. `test_demo_seed_and_export_and_account_delete`: Fictional data seed, complete JSON export, and full account wipe.
+    8. `test_emotion_consent_gating`: Strict 403 when consent disabled; succeeds when enabled.
+    9. `test_emotion_correction_and_independent_deletion`: User correction persistence and independent analysis deletion without touching journal text.
+    10. `test_embedding_consent_gating_and_search`: Consent gating and search execution.
+    11. `test_semantic_retrieval_tenant_isolation_and_abstention`: Tenant isolation and relevance threshold abstention.
+    12. `test_embedding_purge_on_consent_revocation`: Immediate purge of all vector embeddings upon consent withdrawal.
+    13. `test_cross_tenant_isolation`: Security attack defense proving User B cannot read, modify, delete, or export User A's data.
+
+---
+
+## 4. Blockers
+- **None**: All dependencies, database services, API routes, model weights, evaluation scripts, and frontend compilation succeeded locally without paid APIs.
+
+---
+
 ## 5. Next Milestone
-- **Milestone 3: Embeddings & Tenant-Scoped Semantic Retrieval (Ask My History)**:
-  - Generate per-entry vector embeddings using candidate `sentence-transformers/all-MiniLM-L6-v2` (pinned to revision `8b3219a92973c328a8e22fadcfa821b5dc75636a`).
-  - Gated strictly by `embeddings_rag` consent; delete embeddings upon consent revocation or entry deletion.
-  - Tenant filter enforced in database query **before** vector similarity ranking.
-  - Hybrid search combining semantic similarity and keyword/date filtering.
-  - Relevance gate threshold and clear no-match abstention ("I couldn't find a related entry").
-  - Fixed retrieval benchmark on consented/fictional queries reporting Recall@5 and precision.
+- **Milestone 4: RAG Answer Generation, Citation Contract & Grounding Validation**:
+  - Implement `POST /api/v1/journal/ask` endpoint.
+  - Strict generation contract: provider adapter with local generation first; fallback to structured source cards when generation is disabled or unavailable.
+  - Strict citation contract: backend validates that returned `source_entry_ids` are a strict subset of the retrieved entry IDs for the authenticated user.
+  - Untrusted data boundary: retrieved journal text treated strictly as data, never instructions. Prompt injection defenses.
+  - Rejection of clinical/treatment claims or diagnostic speculation.
+  - Measure claim-level citation support rate and unsupported-claim count.
