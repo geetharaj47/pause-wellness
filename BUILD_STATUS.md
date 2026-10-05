@@ -1,12 +1,13 @@
 # Pause AI Student Wellness Companion — Build Status
 
-## 1. Completed Work (Milestone 1: Foundation, DB, Auth, Consent & Private Flows)
+## 1. Completed Work
 
-- **Application Architecture & Branding**: Aligned the project to the Pause Product & Engineering Specification and Build Brief, adopting the calm visual aesthetic (warm paper `#fbf9f5`, forest green text `#1e3a2f`, soft sage action states `#2d5a47`).
+### Milestone 1: Foundation, DB, Auth, Consent & Private Flows
+- **Application Architecture & Calm Visual Design**: Adopted the calm visual aesthetic (warm paper `#fbf9f5`, forest green text `#1e3a2f`, soft sage action states `#2d5a47`).
 - **Database & Persistence**:
-  - Local PostgreSQL 17 cluster configured on port `5434` with database `pause_wellness` (user-space trust configuration, non-blocking and local).
-  - Production Docker Compose configuration created with `pgvector/pgvector:pg16` on port `5432`.
-  - Schema created: `users`, `consent_records`, `check_ins`, `journal_entries`, `daily_plans`, `wellness_actions`, `saved_actions`, `action_events`, `support_resources`, `audit_events`, and schema hooks for `emotion_analyses` and `entry_embeddings`.
+  - Local PostgreSQL 17 cluster running on port `5434` with database `pause_wellness` (native user-space instance).
+  - Production Docker Compose configuration with `pgvector/pgvector:pg16` on port `5432`.
+  - Schema created: `users`, `consent_records`, `check_ins`, `journal_entries`, `daily_plans`, `wellness_actions`, `saved_actions`, `action_events`, `support_resources`, `audit_events`, `emotion_analyses`, and `entry_embeddings`.
 - **Security & Cryptography**:
   - Sensitive journal content is encrypted at rest using application-level AES-256 Fernet envelope encryption (`PAUSE_JOURNAL_ENCRYPTION_KEY`). Decrypted only for the authenticated owner.
   - PBKDF2-HMAC-SHA256 password hashing with 100,000 iterations and 16-byte random salts.
@@ -18,8 +19,8 @@
 - **Private Core Features**:
   - **Today Check-in**: 5 plain-language moods (Great, Good, Okay, Uneasy, Difficult), 1–5 energy scale, context tags (study, sleep, relationships, health, finances, other), and optional private note.
   - **One-Thing Daily Plan**: Single gentle focus and up to 3 editable, checkable steps with no streaks, productivity scores, or guilt copy.
-  - **Reviewed Wellness Catalog**: Seeded 6 reviewed activities (Box Breathing, Micro-Step Task Slicing, 5-4-3-2-1 Grounding, Study-to-Rest Ritual, Reconnect Message, Calm Wind-Down) with accessibility notes, source review versions, context matching, and outcome logging ('helped', 'about the same', 'did not try', 'skip').
-  - **Reflections & Trends**: 7-day and 30-day views with visible check-in counts, non-causal language ("In X check-ins tagged Study, you chose Uneasy Y times. This only describes what you recorded"), and insufficient data empty state.
+  - **Reviewed Wellness Catalog**: Seeded 6 reviewed activities (Box Breathing, Micro-Step Task Slicing, 5-4-3-2-1 Grounding, Study-to-Rest Ritual, Reconnect Message, Calm Wind-Down) with accessibility notes, source review versions, context matching, and outcome logging.
+  - **Reflections & Trends**: 7-day and 30-day views with visible check-in counts, non-causal language, and insufficient data empty state.
   - **Support Resources**: Verified Indian emergency and mental health helplines: Tele-MANAS (`14416` / `1800-89-14416`), National Emergency (`112`), KIRAN (`1800-599-0019`), and Vandrevala Foundation with verification timestamps and explicit non-monitored notice.
   - **Privacy & Portability**: Machine-readable JSON data export (`/api/v1/privacy/export`) and permanent transactional account deletion (`/api/v1/account`).
   - **Fictional Reviewer Demo**: One-click demo sign-in and seed endpoint (`/api/v1/demo/seed`) generating safe synthetic entries for evaluators (`demo@pause-wellness.local`).
@@ -27,6 +28,31 @@
   - Built with Next.js 14, React 18, TypeScript, and Tailwind CSS.
   - All 12 routes compiled with static optimization: `/`, `/plan`, `/journal`, `/actions`, `/reflections`, `/support`, `/privacy`, `/login`, `/register`.
   - Persistent "Get support now" button visible at all times in the header without needing login or AI.
+
+### Milestone 2: Emotion AI Analysis & Evaluation (Completed)
+- **Non-Clinical Taxonomy Implementation**: Implemented the 9 student reflection language tags:
+  `stress/overwhelmed`, `worry/tense`, `sad/disappointed`, `frustrated`, `lonely/disconnected`, `calm/relieved`, `positive/hopeful`, `neutral`, `mixed/uncertain`.
+- **Model Adapter Architecture**:
+  - `Model A (Baseline)`: Transparent TF-IDF + Logistic Regression baseline trained on student reflection language.
+  - `Model B (Candidate)`: `SamLowe/roberta-base-go_emotions` neural classifier pinned to revision `1895400d2daef02be65e8f3c24559e0aa09d5d25`, mapped into Pause's 9 categories.
+  - Robust offline fallback: If neural model cannot load, degrades gracefully to the transparent baseline; if both fail, returns honest `"analysis unavailable"` status without inventing labels.
+- **Guardrails & Plain Language Output**:
+  - Gated strictly by user action ("Analyze this note") and explicit `emotion_analysis` consent; no background scanning.
+  - Qualitative confidence bands (`"tentative"`, `"uncertain"`); no false-precision percentages.
+  - Threshold abstention: returns `"I'm not sure"` when top confidence falls below validation threshold.
+  - Phrase explanation spans: extracts grounded phrase snippets that influenced the tag.
+  - English-only first release boundary: unsupported languages are stored privately but return honest notice that language analysis is currently English-only.
+- **User Agency**:
+  - User can correct tags (`PATCH /api/v1/journal/{id}/analysis`), hide them (`hidden=True`), or delete the analysis independently (`DELETE /api/v1/journal/{id}/analysis`) without touching the underlying journal entry text.
+  - Never overwrites user's own check-in mood or energy.
+- **Interactive UI**:
+  - Embedded "Analyze this note" trigger on each journal card.
+  - Renders tentative tags, confidence, phrase snippets, inline correction editor, and consent warnings.
+- **Empirical Benchmark Evaluation**:
+  - Executed benchmark on held-out student reflection test suite (28 entries).
+  - Real measured results saved to `backend/app/evaluation/results_emotion.json`:
+    - **TF-IDF Baseline**: Macro-F1: `0.2500`, Macro-Precision: `0.2381`, Macro-Recall: `0.3333`, Abstention Rate: `75.0%`, p50 Latency: `0.55 ms`, p95 Latency: `0.72 ms`.
+    - **RoBERTa Candidate**: Macro-F1: `0.4630`, Macro-Precision: `0.4735`, Macro-Recall: `0.5556`, Abstention Rate: `0.0%` on clear expressions, p50 Latency: `41.01 ms`, p95 Latency: `49.74 ms`.
 
 ---
 
@@ -65,6 +91,12 @@
 4. **Reviewer Demo Mode**:
    Click **"One-Click Reviewer Demo Sign In"** on the login screen to automatically seed and log in with safe fictional reflection data.
 
+5. **Run Evaluation Benchmark**:
+   ```powershell
+   $env:PYTHONPATH="backend"
+   .\venv\Scripts\python.exe backend\app\evaluation\evaluate_emotion.py
+   ```
+
 ### Docker Compose Deployment
 ```bash
 docker compose up --build
@@ -75,11 +107,11 @@ This launches `pause_postgres` (pgvector/pgvector:pg16 on 5432), `pause_backend`
 
 ## 3. Checks Performed
 
-- **Database Connection**: `asyncpg` connection verified to `postgresql+asyncpg://postgres@localhost:5434/pause_wellness`. Table metadata creation and seed scripts verified.
+- **Database Connection**: `asyncpg` connection verified to `postgresql+asyncpg://postgres@localhost:5434/pause_wellness`.
 - **Frontend Production Build**: `npm run build` executed successfully across all 12 Next.js App Router pages with zero syntax, webpack, or static generation errors.
 - **Backend Automated Test Suite**:
   - Command: `$env:PYTHONPATH="backend"; .\venv\Scripts\pytest.exe tests/ -v`
-  - Results: **8 passed in 5.04s (100% pass rate)**.
+  - Results: **10 passed in 17.60s (100% pass rate)**.
   - Tests verified:
     1. `test_health_check`: Operational status without sensitive data leaks.
     2. `test_18_plus_enforcement_and_registration`: Strict age gating rejecting minors and accepting adults.
@@ -88,19 +120,22 @@ This launches `pause_postgres` (pgvector/pgvector:pg16 on 5432), `pause_backend`
     5. `test_daily_plan_flow`: One-thing plan with 3 non-punitive steps.
     6. `test_support_resources`: Tele-MANAS, 112, and non-monitored notice.
     7. `test_demo_seed_and_export_and_account_delete`: Fictional data seed, complete JSON export, and full account wipe.
-    8. `test_cross_tenant_isolation`: Security attack defense proving User B cannot read, modify, delete, or export User A's data.
+    8. `test_emotion_consent_gating`: Strict 403 when consent disabled; succeeds when enabled.
+    9. `test_emotion_correction_and_independent_deletion`: User correction persistence and independent analysis deletion without touching journal text.
+    10. `test_cross_tenant_isolation`: Security attack defense proving User B cannot read, modify, delete, or export User A's data.
 
 ---
 
 ## 4. Blockers
-- **None**: All dependencies, database services, API routes, and frontend compilation succeeded locally without paid APIs.
+- **None**: All dependencies, database services, API routes, model weights, evaluation scripts, and frontend compilation succeeded locally without paid APIs.
 
 ---
 
 ## 5. Next Milestone
-- **Milestone 2: Emotion AI Analysis & Evaluation**:
-  - Implement server-side English emotion classification adapter (`SamLowe/roberta-base-go_emotions` vs TF-IDF + Logistic Regression baseline).
-  - Enforce non-clinical taxonomy (stress/overwhelmed, worry/tense, sad/disappointed, frustrated, lonely/disconnected, calm/relieved, positive/hopeful, neutral, mixed/uncertain).
-  - Implement confidence thresholding ("I'm not sure" abstention) and phrase explanation extraction.
-  - Add user correction, hiding, and independent deletion UI.
-  - Scripted evaluation on held-out student reflection benchmarks.
+- **Milestone 3: Embeddings & Tenant-Scoped Semantic Retrieval (Ask My History)**:
+  - Generate per-entry vector embeddings using candidate `sentence-transformers/all-MiniLM-L6-v2` (pinned to revision `8b3219a92973c328a8e22fadcfa821b5dc75636a`).
+  - Gated strictly by `embeddings_rag` consent; delete embeddings upon consent revocation or entry deletion.
+  - Tenant filter enforced in database query **before** vector similarity ranking.
+  - Hybrid search combining semantic similarity and keyword/date filtering.
+  - Relevance gate threshold and clear no-match abstention ("I couldn't find a related entry").
+  - Fixed retrieval benchmark on consented/fictional queries reporting Recall@5 and precision.

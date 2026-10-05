@@ -1,0 +1,137 @@
+{
+  "evaluation_timestamp": "2026-10-05T07:57:46.994545",
+  "dataset": "Pause Held-Out Student Reflection Benchmark",
+  "sample_size": 28,
+  "baseline_tfidf": {
+    "model_name": "TF-IDF + Logistic Regression (Baseline)",
+    "sample_count": 28,
+    "macro_f1": 0.25,
+    "macro_precision": 0.2381,
+    "macro_recall": 0.3333,
+    "abstention_rate": 0.75,
+    "p50_latency_ms": 0.55,
+    "p95_latency_ms": 0.72,
+    "per_class": {
+      "stress/overwhelmed": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 4.0
+      },
+      "worry/tense": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 3.0
+      },
+      "sad/disappointed": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 3.0
+      },
+      "frustrated": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 3.0
+      },
+      "lonely/disconnected": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 3.0
+      },
+      "calm/relieved": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 3.0
+      },
+      "positive/hopeful": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 3.0
+      },
+      "neutral": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 3.0
+      },
+      "mixed/uncertain": {
+        "precision": 0.143,
+        "recall": 1.0,
+        "f1": 0.25,
+        "support": 3.0
+      }
+    }
+  },
+  "candidate_roberta": {
+    "model_name": "RoBERTa-GoEmotions (Mapped Candidate)",
+    "sample_count": 28,
+    "macro_f1": 0.463,
+    "macro_precision": 0.4735,
+    "macro_recall": 0.5556,
+    "abstention_rate": 0.0,
+    "p50_latency_ms": 41.01,
+    "p95_latency_ms": 49.74,
+    "per_class": {
+      "stress/overwhelmed": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 4.0
+      },
+      "worry/tense": {
+        "precision": 1.0,
+        "recall": 0.667,
+        "f1": 0.8,
+        "support": 3.0
+      },
+      "sad/disappointed": {
+        "precision": 0.333,
+        "recall": 1.0,
+        "f1": 0.5,
+        "support": 3.0
+      },
+      "frustrated": {
+        "precision": 1.0,
+        "recall": 0.667,
+        "f1": 0.8,
+        "support": 3.0
+      },
+      "lonely/disconnected": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 3.0
+      },
+      "calm/relieved": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 3.0
+      },
+      "positive/hopeful": {
+        "precision": 0.5,
+        "recall": 1.0,
+        "f1": 0.667,
+        "support": 3.0
+      },
+      "neutral": {
+        "precision": 0.429,
+        "recall": 1.0,
+        "f1": 0.6,
+        "support": 3.0
+      },
+      "mixed/uncertain": {
+        "precision": 1.0,
+        "recall": 0.667,
+        "f1": 0.8,
+        "support": 3.0
+      }
+    }
+  }
+}
