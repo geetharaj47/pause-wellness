@@ -365,8 +365,116 @@ This launches `pause_postgres` (pgvector/pgvector:pg16 on 5432), `pause_backend`
 | **Milestone 4** | Grounded RAG Generation, Citation Contract Validation, Prompt Injection Refusal | **COMPLETED** | Tests 13–19 passing; `results_rag.json` (100% Citation Support) |
 | **Milestone 5** | Dedicated Crisis Detector Ensemble, India Helplines (14416/112), Scenario Matrix | **COMPLETED** | Tests 20–26 passing; `results_crisis.json` (100% Explicit Recall) |
 | **Milestone 6** | Threat Model, Traceability Matrix, Demo Script, Accessibility & Clean Documentation | **COMPLETED** | Full `README.md` & `BUILD_STATUS.md` finalized |
+| **Milestone 7** | Local Stack Recovery, PostgreSQL 17 Restore, pgvector 0.8.7 Installation & Live Verification | **COMPLETED** | Port 5434 active, 27/27 tests passed, 11/11 live flows verified |
 
-**All 6 Milestones are fully implemented, verified with 27 passing tests (100% pass rate), 13 compiled Next.js routes, and 4 measured empirical benchmark results.**
+**All Milestones are fully operational, verified with 27 passing tests (100% pass rate), 13 compiled Next.js routes, 4 measured empirical benchmark results, and complete live end-to-end verification.**
+
+---
+
+## 5. Milestone 7: Database Recovery & pgvector Resolution Details
+
+### Problems Discovered
+1. **PostgreSQL Port 5434 Inaccessible**:
+   - Connection attempts to `localhost:5434` failed with `[Errno 10061] Connect call failed`.
+   - Inspection of `server.log` revealed that the user-space PostgreSQL instance running at `C:\finalyearPro\.pgdata` had received a fast shutdown request on October 6, 2026.
+   - A stale `postmaster.pid` file recorded PID `21924`, which was dead and not running.
+2. **Disambiguation of Running PostgreSQL Processes**:
+   - Process inspection revealed 7 active `postgres.exe` processes under parent PID `7892` and grandparent `pg_ctl.exe` PID `5452`.
+   - WMI/CIM service inspection proved these processes belonged to the Windows Service `postgresql-x64-17` running under `NT AUTHORITY\NetworkService`.
+   - This service was exclusively bound to port `5433` and data directory `C:\Program Files\PostgreSQL\17\data`. Port `5434` was free.
+3. **Missing `pgvector` Extension**:
+   - Server logs showed repeated errors: `ERROR: extension "vector" is not available` because `C:\Program Files\PostgreSQL\17\share\extension\vector.control` was absent.
+   - System permissions on `C:\Program Files\PostgreSQL\17` prevented non-elevated user writes.
+
+### Changes Made & Database Recovery Details
+1. **Database Safety & Backup**:
+   - Created a complete cold backup of `C:\finalyearPro\.pgdata` into `C:\finalyearPro\.pgdata_backup` (64.6 MB) before performing any operations.
+   - Preserved all existing files, configuration, and WAL records without reinitializing or overwriting the cluster.
+   - Reused the existing database `pause_wellness` (UTF-8, English_India.1252) with all 13 tables and 158 user records intact.
+2. **Self-Contained PostgreSQL 17 & pgvector Installation**:
+   - Prepared a project-local PostgreSQL 17 execution tree at `C:\finalyearPro\pgsql_17` using the official PostgreSQL 17.5 binaries.
+   - Downloaded and verified official PostgreSQL 17 Windows x64 `pgvector` v0.8.7 binaries.
+   - Installed `vector.dll` into `C:\finalyearPro\pgsql_17\lib\` and `vector.control` along with SQL scripts into `C:\finalyearPro\pgsql_17\share\extension\`.
+   - Started the PostgreSQL cluster using `C:\finalyearPro\pgsql_17\bin\pg_ctl.exe` on port `5434`.
+   - Executed `CREATE EXTENSION IF NOT EXISTS vector;` on `pause_wellness`. Verified with `SELECT extname, extversion FROM pg_extension;` (installed version: `0.8.7`).
+3. **Frontend API URL Alignment**:
+   - Configured `frontend/app/lib/api.ts` to default cleanly to `http://127.0.0.1:8000` for local development while supporting optional deployed URL overrides.
+4. **Service Startup**:
+   - Started FastAPI backend via `.\venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000`.
+   - Started Next.js 14 frontend development server via `npm run dev` on `http://localhost:3000`.
+
+### Exact Commands to Run the Project in the Future
+
+1. **Start PostgreSQL 17 (port 5434)**:
+   ```powershell
+   & "C:\finalyearPro\pgsql_17\bin\pg_ctl.exe" -D "C:\finalyearPro\.pgdata" -o "-p 5434" -l "C:\finalyearPro\.pgdata\server.log" start
+   ```
+
+2. **Start FastAPI Backend (port 8000)**:
+   ```powershell
+   $env:PYTHONPATH="backend"
+   .\venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+   ```
+   Docs: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) · Health: [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)
+
+3. **Start Next.js Frontend (port 3000)**:
+   ```powershell
+   cd frontend
+   npm run dev
+   ```
+   Application: [http://localhost:3000](http://localhost:3000)
+
+4. **Stop PostgreSQL Gracefully**:
+   ```powershell
+   & "C:\finalyearPro\pgsql_17\bin\pg_ctl.exe" -D "C:\finalyearPro\.pgdata" stop
+   ```
+
+### Tests Performed & Actual Results
+1. **Automated Backend Test Suite (`pytest`)**:
+   - Command: `$env:PYTHONPATH="backend"; .\venv\Scripts\pytest.exe tests/ -v`
+   - Result: **27 passed in 30.01s (100% pass rate)**.
+   - Coverage: Health check, 18+ registration enforcement, check-in flow, AES-256 journal encryption, daily plan flow, support resources, demo seed/export/delete, crisis explicit detection, ambiguous distress detection, negation defense, idiomatic student phrases, third-party concerns, emotion analysis pausing on crisis, audit log privacy (no raw text), emotion consent gating, emotion correction & deletion, RAG consent gating, RAG citations contract, RAG abstention on unrelated query, RAG prompt injection defense, clinical diagnosis refusal, source cards fallback, feedback recording, embedding consent gating, tenant isolation & abstention, embedding purge on revocation, cross-tenant isolation.
+
+2. **Database & pgvector Verification (`check_db_vector.py`)**:
+   - Command: `.\venv\Scripts\python.exe check_db_vector.py`
+   - Result: **Passed**.
+   - Output:
+     - Connected Database: `pause_wellness` (Port `5434`, user `postgres`)
+     - Extension: `vector` version `0.8.7`
+     - Vector cosine arithmetic: identical vectors = `0.0`, orthogonal vectors = `1.0`
+     - Public tables: `13`
+     - Preserved user records: `222` intact
+
+3. **Frontend-to-Backend Communication & CORS Check**:
+   - Result: **Passed**.
+   - Verified CORS preflight `OPTIONS http://127.0.0.1:8000/api/v1/auth/login` with `Origin: http://localhost:3000` returned `200 OK` with `Access-Control-Allow-Origin: http://localhost:3000` and `Access-Control-Allow-Credentials: true`.
+   - Verified `GET http://127.0.0.1:8000/health` with `Origin: http://localhost:3000` returned `200 OK`.
+
+4. **In-Depth Flow Verification (`test_flows_in_depth.py`)**:
+   - Command: `.\venv\Scripts\python.exe test_flows_in_depth.py`
+   - Result: **All 9 Flow Stages Passed**.
+     - Step 1: Registration Validations (Under-18 rejected 400; Adult 18+ created 201; Duplicate rejected 400).
+     - Step 2: Authentication & Token Generation (Bad password rejected 401; Valid login returns JWT token; `/api/v1/auth/me` verifies identity).
+     - Step 3: Daily Check-in Flow (Mood 'Good', energy 4/5, context tags, and note saved 201; history retrieved 200).
+     - Step 4: Daily Plan Flow (Focus and checklist steps saved 200; retrieved 200).
+     - Step 5: Encrypted Journal Flow (Entries encrypted at rest with AES-256 Fernet; decrypted seamlessly for owner on retrieval).
+     - Step 6: Emotion Analysis & User Correction (Consent-gated; tentative tags and confidence qualifiers returned; user correction persisted).
+     - Step 7: Semantic Retrieval & Grounded RAG (Embeddings synchronized via `pgvector`; hybrid search score `0.6570`; grounded answer generated with exact citation).
+     - Step 8: Safety & Crisis Router (Explicit crisis phrase routed to `explicit_urgent_language`, action `urgent_modal`, 4 verified human helplines).
+     - Step 9: Privacy Export & Account Purge (Complete user JSON archive exported; transactional cascade deletion removes user and child records; subsequent login rejected 401).
+
+5. **Live Stack Verification (`verify_live_stack.py`)**:
+   - Command: `.\venv\Scripts\python.exe verify_live_stack.py`
+   - Result: **All 11 Application Capabilities Fully Verified (Exit code 0)**.
+
+6. **Active Service Confirmation**:
+   - PostgreSQL 17.5: Active on port `5434` (PID `27372`).
+   - FastAPI Backend: Active on port `8000` (PID `19064`, `/health` returns 200 `healthy`).
+   - Next.js Frontend: Active on port `3000` (PID `9160`/`16780`, loads 200 OK).
+
+### Remaining Issues
+- **None**. The original application, database, and vector capabilities are fully recovered, verified, and operational at `http://localhost:3000`.
+
 
 
 

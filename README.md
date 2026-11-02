@@ -215,11 +215,18 @@ Follow these steps for a complete live evaluation of Pause:
    .\venv\Scripts\python.exe backend\app\evaluation\evaluate_crisis.py
    ```
 
-### Docker Compose Deployment
-```bash
-docker compose up --build
-```
-Launches `pause_postgres` (pgvector:pg16 on port 5432), `pause_backend` (port 8000), and `pause_frontend` (port 3000).
+### Cloud Deployment (Render Blueprint)
+
+The application includes a production Blueprint specification in [`render.yaml`](file:///c:/finalyearPro/render.yaml):
+- **Frontend Service**: Next.js 14 (`pause-web`) serving responsive client UI.
+- **Backend Service**: FastAPI (`pause-api`) with local-first ML, RAG, and health-check endpoints.
+- **Database**: Private PostgreSQL instance with native `pgvector` support (`pause-db`).
+
+#### Deploying on Render:
+1. Open the [Render Dashboard](https://dashboard.render.com).
+2. Click **New +** -> **Blueprint**.
+3. Connect your repository: `https://github.com/geetharaj47/pause-wellness`.
+4. Render automatically parses `render.yaml`, provisions all services, manages private database connectivity, and issues SSL certificates for public HTTPS URLs.
 
 ---
 

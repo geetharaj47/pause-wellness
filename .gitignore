@@ -6,6 +6,8 @@
 *.db
 *.sqlite3
 .pgdata/
+.pgdata_backup/
+pgsql_17/
 
 # Python dependencies & cache
 __pycache__/

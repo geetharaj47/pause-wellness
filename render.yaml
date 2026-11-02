@@ -9,7 +9,7 @@ services:
     plan: free
     branch: master
     rootDir: backend
-    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    buildCommand: pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     autoDeploy: true
@@ -49,16 +49,13 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: NEXT_PUBLIC_API_URL
-        fromService:
-          type: web
-          name: pause-api
-          property: host
       - key: BACKEND_INTERNAL_URL
         fromService:
           type: web
           name: pause-api
-          property: host
+          property: hostport
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
 
 databases:
   # ==============================================================================
