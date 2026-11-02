@@ -473,7 +473,57 @@ This launches `pause_postgres` (pgvector/pgvector:pg16 on 5432), `pause_backend`
    - Next.js Frontend: Active on port `3000` (PID `9160`/`16780`, loads 200 OK).
 
 ### Remaining Issues
-- **None**. The original application, database, and vector capabilities are fully recovered, verified, and operational at `http://localhost:3000`.
+- **None**. The local application, database, and vector capabilities are fully recovered, verified, and operational at `http://localhost:3000`.
+
+---
+
+## Milestone 8: GitHub Publication & Cloud Deployment Architecture (Current)
+
+### Status: Code Pushed to GitHub & Blueprint Ready for 1-Click Launch
+
+### GitHub Repository Details
+- **Repository URL**: [https://github.com/geetharaj47/pause-wellness](https://github.com/geetharaj47/pause-wellness)
+- **Branch**: `master`
+- **Latest Commit**: `ec46932` (*feat(deploy): align production Render Blueprint, port dynamic binding, and verification suites*)
+- **Code Audit**: Complete source code verified. All local virtual environments (`venv/`), dependencies (`node_modules/`), local PostgreSQL directories (`.pgdata/`, `.pgdata_backup/`, `pgsql_17/`), logs, caches, and `.env` files are strictly excluded via `.gitignore`. Zero credentials, tokens, or personal journal data committed.
+
+### Hosting Architecture & Configuration (`render.yaml`)
+1. **Frontend Service (`pause-web`)**:
+   - **Framework**: Next.js 14 (Node runtime).
+   - **Build Command**: `npm install && npm run build` (All 13 routes pre-rendered with static optimization).
+   - **Start Command**: `npm start` (Dynamically binds to Render's assigned `$PORT`).
+   - **Private Proxy**: Routes `/api/*` through Next.js rewrite proxy to `BACKEND_INTERNAL_URL` (`pause-api:hostport`) over Render's private network, preventing Mixed Content and CORS issues for remote users.
+   - **Tier**: Free Web Service ($0/month).
+
+2. **Backend API Service (`pause-api`)**:
+   - **Framework**: FastAPI (Python 3.12, Uvicorn).
+   - **Build Command**: `pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt`.
+   - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`.
+   - **Health Check Endpoint**: `/health` (Responds `200 OK`, `{"status":"healthy"}`).
+   - **Security & Privacy Settings**:
+     - `ENVIRONMENT: production`
+     - `DATABASE_URL`: Automatically linked from private `pause-db`.
+     - `JWT_SECRET_KEY`: Render-generated unique production secret (`generateValue: true`).
+     - `PAUSE_JOURNAL_ENCRYPTION_KEY`: Render-generated 256-bit key (`generateValue: true`).
+     - `ENABLE_DEMO_ACCOUNT`: `"false"` (Eliminates shared or seeded demo data risk).
+     - `ENABLE_EXTERNAL_MODEL_PROVIDER`: `"false"` (Guarantees zero external paid AI APIs; all inference remains strictly local and private).
+     - `CORS_ORIGINS`: Allowed for all HTTPS onrender domains.
+   - **Tier**: Free Web Service ($0/month).
+
+3. **Database (`pause-db`)**:
+   - **Engine**: PostgreSQL 15+ with native `pgvector` pre-installed.
+   - **Access**: Private network only (`ipAllowList: []`), completely inaccessible from public internet.
+   - **Automatic Schema Initialization**: Handled on startup by `init_db()` in `backend/app/database.py` via `CREATE EXTENSION IF NOT EXISTS vector;` and SQLModel table creation.
+   - **Tier**: Free PostgreSQL ($0/month, 30-day trial).
+
+### Cost & Hosting Plan Comparison
+| Resource | Hosting Plan | Expected Monthly Cost | Free Alternative / Notes |
+| :--- | :--- | :--- | :--- |
+| **`pause-web`** (Next.js) | Render Free Web Service | **$0.00 / month** | Included in free tier (spins down on idle, spins up in ~30s on request). |
+| **`pause-api`** (FastAPI) | Render Free Web Service | **$0.00 / month** | Included in free tier (spins down on idle, spins up in ~30s on request). |
+| **`pause-db`** (PostgreSQL + pgvector) | Render Free PostgreSQL | **$0.00 / month** | Automatically expires after 30 days. Perfect for presentations, project reviews, and testing. |
+| *Permanent DB Alternative* | Neon Serverless PostgreSQL | **$0.00 / month** | Permanently free (0.5 GB, pgvector pre-installed, no 30-day expiration). Can be connected via `DATABASE_URL` env var. |
+| *Paid DB Alternative* | Render Basic PostgreSQL | **$7.00 / month** | Only if perpetual persistence is desired on Render without manual renewals. |
 
 
 
